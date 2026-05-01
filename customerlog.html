@@ -1,0 +1,424 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shoe Rack Log - Digital Sheet</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and Babel for the app logic -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        @media print {
+            @page { size: A4 landscape; margin: 5mm; }
+            body { background: white !important; }
+            .print-hide { display: none !important; }
+            .no-shadow { box-shadow: none !important; border: 2px solid black !important; }
+            input, textarea { border: none !important; outline: none !important; }
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .cursor-grab { cursor: grab; }
+        .cursor-grabbing { cursor: grabbing; }
+    </style>
+</head>
+<body class="bg-slate-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        const App = () => {
+            // Main State
+            const [rows, setRows] = useState([
+                { id: 1, name: 'CHARANJIT SINGH', target: '', am: { a: '', c: '', b: '' }, al: { a: '', c: '', b: '' }, cm: { a: '', c: '', b: '' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
+                { id: 2, name: 'JASSI SINGH', target: '3.7780', am: { a: '', c: 'III', b: '' }, al: { a: '', c: 'I', b: '' }, cm: { a: '', c: 'III', b: 'CCC' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
+                { id: 3, name: 'ARVIND', target: '3.7780', am: { a: '', c: 'I', b: '@' }, al: { a: '', c: 'I', b: '' }, cm: { a: '', c: '', b: '' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
+            ]);
+
+            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+            const [mt, setMt] = useState('3.0');
+            const [titleText, setTitleText] = useState('SHOE RACK');
+            const [storeName, setStoreName] = useState('(DLF Colony)');
+            
+            const [activeCell, setActiveCell] = useState(null); 
+            const [activeTier, setActiveTier] = useState('a'); 
+            const [confirmClear, setConfirmClear] = useState(false);
+            
+            const [declaration, setDeclaration] = useState('I CERTIFY, THE INFORMATION GIVEN BELOW IS TRUE & CORRECT OF MY BEST KNOWLEDGE');
+            const [managerSign, setManagerSign] = useState('ARVIND');
+            const [managerRole, setManagerRole] = useState('MANAGER');
+            const [confirmedDateText, setConfirmedDateText] = useState(new Date().toLocaleDateString('en-GB'));
+            const [mobileBans, setMobileBans] = useState(['', '']);
+            const [suspended, setSuspended] = useState([{from: '', till: ''}, {from: '', till: ''}]);
+            const [phoneCalls, setPhoneCalls] = useState({ today: '0', total: '', reason: '' });
+
+            const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
+            const [isDragging, setIsDragging] = useState(false);
+            const dragOffset = useRef({ x: 0, y: 0 });
+
+            const symbols = [
+                { key: 'I', label: 'Walkin/Convert' },
+                { key: 'L', label: 'Leave' },
+                { key: '@', label: 'DOB' },
+                { key: 'E', label: 'Existing' },
+                { key: 'X', label: 'Not Given' },
+                { key: 'O', label: 'Ghera System' },
+                { key: 'A', label: 'Accessories' },
+                { key: '-', label: 'Attended by one' },
+                { key: 'C', label: 'Candy Served' },
+                { key: '?', label: 'Pointer' }
+            ];
+
+            // Global Actions
+            const clearSheetData = () => {
+                // 1. Clear tally marks and RP/Ret/Book in rows
+                setRows(prevRows => prevRows.map(row => ({
+                    ...row,
+                    am: { a: '', c: '', b: '' },
+                    al: { a: '', c: '', b: '' },
+                    cm: { a: '', c: '', b: '' },
+                    cl: { a: '', c: '', b: '' },
+                    rp: '',
+                    ret: '',
+                    book: ''
+                })));
+                
+                // 2. Clear footer fields
+                setPhoneCalls({ today: '0', total: '', reason: '' });
+                setSuspended([{from: '', till: ''}, {from: '', till: ''}]);
+                setMobileBans(['', '']);
+                
+                // 3. Reset confirmation state
+                setConfirmClear(false);
+            };
+
+            const handlePrint = () => {
+                window.print();
+            };
+
+            const addRow = () => {
+                setRows([...rows, { 
+                    id: Date.now(), 
+                    name: 'NEW EMPLOYEE', 
+                    target: '', 
+                    am: {a:'',c:'',b:''}, 
+                    al:{a:'',c:'',b:''}, 
+                    cm:{a:'',c:'',b:''}, 
+                    cl:{a:'',c:'',b:''}, 
+                    rp:'', 
+                    ret:'', 
+                    book:'' 
+                }]);
+            };
+
+            // Dragging Logic
+            const onDragStart = (e) => {
+                setIsDragging(true);
+                const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+                dragOffset.current = { x: clientX - popupPos.x, y: clientY - popupPos.y };
+            };
+
+            const onDragMove = useCallback((e) => {
+                if (!isDragging) return;
+                const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+                setPopupPos({ x: clientX - dragOffset.current.x, y: clientY - dragOffset.current.y });
+            }, [isDragging]);
+
+            const onDragEnd = () => setIsDragging(false);
+
+            useEffect(() => {
+                if (isDragging) {
+                    window.addEventListener('mousemove', onDragMove);
+                    window.addEventListener('mouseup', onDragEnd);
+                    window.addEventListener('touchmove', onDragMove);
+                    window.addEventListener('touchend', onDragEnd);
+                } else {
+                    window.removeEventListener('mousemove', onDragMove);
+                    window.removeEventListener('mouseup', onDragEnd);
+                    window.removeEventListener('touchmove', onDragMove);
+                    window.removeEventListener('touchend', onDragEnd);
+                }
+                return () => {
+                    window.removeEventListener('mousemove', onDragMove);
+                    window.removeEventListener('mouseup', onDragEnd);
+                    window.removeEventListener('touchmove', onDragMove);
+                    window.removeEventListener('touchend', onDragEnd);
+                };
+            }, [isDragging, onDragMove]);
+
+            useEffect(() => {
+                if (activeCell && popupPos.x === 0 && popupPos.y === 0) {
+                    setPopupPos({ x: window.innerWidth / 2 - 180, y: window.innerHeight - 340 });
+                }
+            }, [activeCell]);
+
+            // Math Logic
+            const countMarks = (cellData) => {
+                if (!cellData || !cellData.c) return 0;
+                return (cellData.c.match(/I/g) || []).length;
+            };
+
+            const sumCol = (field) => rows.reduce((acc, row) => acc + (parseFloat(row[field]) || 0), 0);
+
+            const updateRow = (id, field, value, tier) => {
+                setRows(rows.map(row => {
+                    if (row.id === id) {
+                        if (tier) return { ...row, [field]: { ...row[field], [tier]: value } };
+                        return { ...row, [field]: value };
+                    }
+                    return row;
+                }));
+            };
+
+            const addSymbol = (symbolKey) => {
+                if (!activeCell) return;
+                const row = rows.find(r => r.id === activeCell.rowId);
+                let targetTier = activeTier;
+                if (symbolKey === 'I' || symbolKey === 'L') targetTier = 'c';
+                const currentVal = row[activeCell.field][targetTier] || '';
+                updateRow(activeCell.rowId, activeCell.field, currentVal + symbolKey, targetTier);
+            };
+
+            const grandAttended = rows.reduce((acc, row) => acc + countMarks(row.am) + countMarks(row.al), 0);
+            const grandConverted = rows.reduce((acc, row) => acc + countMarks(row.cm) + countMarks(row.cl), 0);
+            const grandPct = grandAttended > 0 ? Math.round((grandConverted / grandAttended) * 100) : 0;
+
+            return (
+                <div className="min-h-screen bg-slate-100 p-2 md:p-6 print:bg-white print:p-0">
+                    <div className="max-w-[1150px] mx-auto bg-white border-2 border-black relative shadow-2xl print:shadow-none print:border-black no-shadow">
+                        
+                        {/* Top Bar (Editable Sign & Declaration) */}
+                        <div className="flex justify-between items-center px-4 py-1.5 border-b border-black text-[10px] font-bold bg-slate-50 uppercase">
+                            <div className="flex gap-4 items-center flex-1">
+                                <div className="flex gap-1 items-center shrink-0">
+                                    <span className="text-slate-400">SIGN:</span> 
+                                    <input type="text" className="border-b border-slate-300 w-24 outline-none bg-transparent font-black" value={managerSign} onChange={(e) => setManagerSign(e.target.value)} />
+                                </div>
+                                <input type="text" className="flex-1 opacity-60 bg-transparent outline-none border-b border-transparent focus:border-slate-300 font-bold" value={declaration} onChange={(e) => setDeclaration(e.target.value)} />
+                            </div>
+                            <div className="flex gap-1 items-center shrink-0 ml-4">
+                                <input type="text" className="opacity-40 text-[8px] bg-transparent outline-none border-none text-right font-black w-16" value={managerRole} onChange={(e) => setManagerRole(e.target.value)} />
+                                <input type="text" className="bg-transparent border-none outline-none text-right w-24 text-blue-600 font-black" value={managerSign} onChange={(e) => setManagerSign(e.target.value)} />
+                            </div>
+                        </div>
+
+                        {/* Branding & Summary Header */}
+                        <div className="flex border-b border-black h-36 bg-white">
+                            <div className="w-40 p-4 border-r border-black flex flex-col justify-center gap-3">
+                                <div className="flex items-center gap-2 font-bold text-[11px]">
+                                    <span className="text-slate-400 shrink-0 uppercase">M.T.:</span>
+                                    <input type="text" value={mt} onChange={e => setMt(e.target.value)} className="border-b border-black w-full outline-none font-black text-center" />
+                                </div>
+                                <div className="flex flex-col gap-1 font-bold">
+                                    <span className="text-slate-400 text-[8px] uppercase">Select Date:</span>
+                                    <input type="date" value={date} onChange={e => { setDate(e.target.value); setConfirmedDateText(new Date(e.target.value).toLocaleDateString('en-GB')); }} className="w-full outline-none font-black border border-slate-200 rounded p-1 text-[11px] bg-slate-50" />
+                                </div>
+                            </div>
+
+                            <div className="flex-1 flex flex-col items-center justify-center p-2 border-r border-black">
+                                <input type="text" value={titleText} onChange={(e) => setTitleText(e.target.value.toUpperCase())} className="text-4xl font-black italic tracking-tight text-slate-900 bg-transparent outline-none text-center w-full" />
+                                <input type="text" value={storeName} onChange={e => setStoreName(e.target.value)} className="text-xl font-bold text-blue-600 bg-transparent outline-none text-center w-full mt-1" />
+                            </div>
+
+                            <div className="w-72 bg-slate-900 text-white flex flex-col text-center border-l border-black">
+                                <div className="text-[9px] font-black border-b border-slate-800 p-2 bg-slate-950 tracking-tighter uppercase italic text-slate-500">Walkins / Conv / Conversion %</div>
+                                <div className="flex-1 flex items-center justify-around font-black text-3xl italic px-4 py-2">
+                                    <span className="text-slate-400">{grandAttended}</span>
+                                    <span className="text-slate-800">/</span>
+                                    <span className="text-slate-400">{grandConverted}</span>
+                                    <span className="text-slate-800">/</span>
+                                    <span className="text-blue-500">{grandPct}%</span>
+                                </div>
+                                <div className="grid grid-cols-3 border-t border-slate-800 bg-slate-950 font-black divide-x divide-slate-800 uppercase">
+                                    <div className="flex flex-col p-2">
+                                        <span className="text-[7px] text-slate-500 tracking-tighter">Total RP</span>
+                                        <span className="text-sm text-white">{sumCol('rp')}</span>
+                                    </div>
+                                    <div className="flex flex-col p-2">
+                                        <span className="text-[7px] text-slate-500 tracking-tighter">Total Ret.</span>
+                                        <span className="text-sm text-white">{sumCol('ret')}</span>
+                                    </div>
+                                    <div className="flex flex-col p-2">
+                                        <span className="text-[7px] text-slate-500 tracking-tighter">Total Book</span>
+                                        <span className="text-sm text-white">{sumCol('book')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Main Grid */}
+                        <div className="flex relative bg-white overflow-x-auto">
+                            <table className="flex-1 border-collapse table-fixed min-w-[1000px]">
+                                <thead>
+                                    <tr className="bg-slate-100 uppercase font-black text-[10px] text-slate-600">
+                                        <th rowSpan="2" className="border-b border-r border-black p-3 w-64 text-left">Employee Name</th>
+                                        <th colSpan="2" className="border-b border-r border-black p-1 text-center">Attended</th>
+                                        <th colSpan="2" className="border-b border-r border-black p-1 text-center">Converted</th>
+                                        <th rowSpan="2" className="border-b border-r border-black p-1 w-32 text-center bg-blue-50/40 italic">Individual Total</th>
+                                        <th rowSpan="2" className="border-b border-r border-black p-1 w-16 text-center text-[8px]">RP</th>
+                                        <th rowSpan="2" className="border-b border-r border-black p-1 w-16 text-center text-[8px]">Ret.</th>
+                                        <th rowSpan="2" className="border-b border-black p-1 w-16 text-center text-[8px]">Book</th>
+                                    </tr>
+                                    <tr className="bg-slate-50 text-[8px] font-bold">
+                                        <th className="border-b border-r border-black p-1 w-28">MENS</th>
+                                        <th className="border-b border-r border-black p-1 w-28">LADIES</th>
+                                        <th className="border-b border-r border-black p-1 w-28">MENS</th>
+                                        <th className="border-b border-r border-black p-1 w-28">LADIES</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map(row => {
+                                        const att = countMarks(row.am) + countMarks(row.al);
+                                        const conv = countMarks(row.cm) + countMarks(row.cl);
+                                        const pct = att > 0 ? Math.round((conv / att) * 100) : 0;
+                                        return (
+                                            <tr key={row.id} className="h-16 group">
+                                                <td className="border-b border-r border-black p-2 bg-slate-50/20 relative">
+                                                    <div className="flex items-center gap-1">
+                                                        <button onClick={() => setRows(rows.filter(r => r.id !== row.id))} className="print-hide opacity-0 group-hover:opacity-100 text-red-500 p-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></button>
+                                                        <input type="text" value={row.name} onChange={e => updateRow(row.id, 'name', e.target.value.toUpperCase())} className="flex-1 font-black uppercase bg-transparent outline-none text-[11px] tracking-tight" />
+                                                    </div>
+                                                    <div className="flex items-center gap-1 mt-1 text-[9px] font-bold italic text-slate-400 ml-6"><span>T.T. :-</span><input type="text" value={row.target} onChange={e => updateRow(row.id, 'target', e.target.value)} className="bg-transparent border-b border-slate-200 w-full outline-none" /></div>
+                                                </td>
+                                                {['am', 'al', 'cm', 'cl'].map(f => (
+                                                    <td key={f} className={`border-b border-r border-black p-0 relative cursor-pointer hover:bg-slate-50 transition-colors ${activeCell?.rowId === row.id && activeCell?.field === f ? 'bg-blue-50 shadow-inner' : ''}`} onClick={() => setActiveCell({rowId: row.id, field: f})}>
+                                                        <div className="w-full h-full flex flex-col justify-between items-center py-1.5 overflow-hidden">
+                                                            <div className="text-[10px] font-black text-slate-400 h-1/4 leading-none">{row[f].a}</div>
+                                                            <div className={`text-xl font-black h-1/2 flex items-center leading-none ${row[f].c.includes('L') ? 'text-red-500' : 'text-black'}`}>{row[f].c}</div>
+                                                            <div className="text-[10px] font-black text-slate-400 h-1/4 leading-none">{row[f].b}</div>
+                                                        </div>
+                                                    </td>
+                                                ))}
+                                                <td className="border-b border-r border-black bg-blue-50/20 p-0 text-center font-black text-xs italic">
+                                                    <span className="text-slate-400">{att}</span> / <span className="text-slate-600">{conv}</span> / <span className="text-blue-600">{pct}%</span>
+                                                </td>
+                                                <td className="border-b border-r border-black p-0"><input type="number" value={row.rp} onChange={e => updateRow(row.id, 'rp', e.target.value)} className="w-full h-full p-1 text-center outline-none bg-transparent text-[11px] font-black" placeholder="0" /></td>
+                                                <td className="border-b border-r border-black p-0"><input type="number" value={row.ret} onChange={e => updateRow(row.id, 'ret', e.target.value)} className="w-full h-full p-1 text-center outline-none bg-transparent text-[11px] font-black" placeholder="0" /></td>
+                                                <td className="border-b border-black p-0"><input type="number" value={row.book} onChange={e => updateRow(row.id, 'book', e.target.value)} className="w-full h-full p-1 text-center outline-none bg-transparent text-[11px] font-black" placeholder="0" /></td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Action Row */}
+                        <div className="print-hide border-b border-black bg-slate-50 p-2 flex justify-center">
+                            <button onClick={addRow} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-full font-black text-[10px] uppercase shadow-lg hover:bg-blue-700 transition-all">? Add New Employee Row</button>
+                        </div>
+
+                        {/* Admin Footer Grid */}
+                        <div className="flex border-t border-black min-h-[110px] text-[10px] bg-white divide-x divide-black">
+                            <div className="w-1/4 p-3 flex flex-col gap-2 uppercase italic text-slate-500">
+                                <span className="font-black text-[9px] border-b border-slate-100 pb-1 uppercase">Suspended /</span>
+                                {suspended.map((s, i) => (
+                                    <div key={i} className="border-b border-slate-200 flex justify-between h-5 items-center gap-2">
+                                        <span className="text-[7px] font-bold">FROM:</span>
+                                        <input type="text" className="w-1/3 outline-none bg-transparent text-black font-black text-center" value={s.from} onChange={e => { const n = [...suspended]; n[i].from = e.target.value; setSuspended(n); }} /> 
+                                        <span className="text-[7px] font-bold">TILL:</span>
+                                        <input type="text" className="w-1/3 outline-none bg-transparent text-black font-black text-center" value={s.till} onChange={e => { const n = [...suspended]; n[i].till = e.target.value; setSuspended(n); }} />
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="w-1/4 p-3 flex flex-col gap-2 uppercase italic text-slate-500">
+                                <span className="font-black text-[9px] border-b border-slate-100 pb-1 uppercase">Mobile Ban List :</span>
+                                {mobileBans.map((ban, i) => (
+                                    <input key={i} type="text" className="border-b border-slate-200 h-5 bg-transparent outline-none text-black font-black text-[10px]" placeholder={`Employee ${i+1}...`} value={ban} onChange={e => { const n = [...mobileBans]; n[i] = e.target.value; setMobileBans(n); }} />
+                                ))}
+                            </div>
+
+                            <div className="flex-1 p-3 flex flex-col justify-between">
+                                <div className="flex items-center gap-4 font-black border-b border-slate-100 pb-3">
+                                    <span className="uppercase text-[8px] text-slate-400">Calls TODAY:</span>
+                                    <input type="text" className="border-2 border-slate-200 w-12 text-center h-7 rounded text-blue-600 text-sm" value={phoneCalls.today} onChange={e => setPhoneCalls({...phoneCalls, today: e.target.value})} />
+                                    <span className="text-slate-400 uppercase text-[8px]">Daily Target:</span>
+                                    <input type="text" className="border-2 border-slate-200 w-12 text-center h-7 rounded text-sm" value={phoneCalls.total} onChange={e => setPhoneCalls({...phoneCalls, total: e.target.value})} />
+                                    <span className="italic text-slate-300 uppercase text-[8px] ml-auto">Remarks</span>
+                                </div>
+                                <textarea placeholder="Type call remarks here..." className="w-full outline-none bg-transparent italic text-[11px] h-12 resize-none leading-tight font-medium pt-1" value={phoneCalls.reason} onChange={(e) => setPhoneCalls({...phoneCalls, reason: e.target.value})} />
+                            </div>
+                            
+                            {/* Reset & Save Actions */}
+                            <div className="w-1/4 p-4 flex flex-col justify-between items-end bg-slate-50/50">
+                                <div className="flex gap-2 print-hide">
+                                    {confirmClear ? (
+                                        <button onClick={clearSheetData} className="text-[8px] bg-red-600 text-white px-3 py-1.5 rounded font-black shadow-lg animate-pulse uppercase">RESET DATA NOW</button>
+                                    ) : (
+                                        <button onClick={() => setConfirmClear(true)} className="text-[8px] bg-white border border-slate-300 text-slate-500 px-3 py-1.5 rounded hover:bg-slate-200 font-bold uppercase transition-all shadow-sm">Clear Sheet</button>
+                                    )}
+                                    <button onClick={handlePrint} className="text-[8px] bg-slate-900 text-white px-4 py-1.5 rounded shadow-lg font-black uppercase hover:bg-black transition-all">SAVE REPORT (PDF)</button>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                    <div className="font-black text-xs flex gap-2 items-center bg-white border border-slate-200 px-3 py-1.5 rounded shadow-inner">
+                                        <span className="text-slate-400 uppercase text-[7px] shrink-0">Confirmed Date:</span>
+                                        <input type="text" value={confirmedDateText} onChange={(e) => setConfirmedDateText(e.target.value)} className="bg-transparent border-none outline-none text-blue-700 font-black w-24 text-right" placeholder="DD/MM/YYYY" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Legend */}
+                        <div className="p-3 border-t border-black bg-slate-100">
+                            <div className="text-[9px] font-black mb-2 text-slate-500 uppercase italic tracking-widest border-b border-slate-200 pb-1">Sign Meanings / Guide</div>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-y-2 gap-x-4 text-[8px] font-bold uppercase tracking-tight leading-none">
+                                {symbols.map(s => (
+                                    <div key={s.key} className="flex gap-2 items-center">
+                                        <span className={`w-4 h-4 flex items-center justify-center rounded-sm font-black transition-colors ${s.key === 'I' ? 'bg-blue-600 text-white' : s.key === 'L' ? 'bg-red-600 text-white' : 'bg-white text-slate-900'}`}>{s.key}</span> 
+                                        <span className="text-slate-500 font-normal uppercase">{s.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Movable Controller */}
+                        {activeCell && (
+                            <div style={{ left: `${popupPos.x}px`, top: `${popupPos.y}px`, position: 'fixed' }} className={`bg-slate-900 text-white p-5 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-5 z-[100] print-hide border border-slate-700 w-[90%] max-w-sm ${isDragging ? 'opacity-90' : ''}`}>
+                                <div onMouseDown={onDragStart} onTouchStart={onDragStart} className="flex items-center justify-between border-b border-slate-800 pb-3 cursor-grab select-none">
+                                    <div className="flex bg-slate-800 rounded-xl p-1 text-[9px] font-black">
+                                        <button onClick={(e) => {e.stopPropagation(); setActiveTier('a');}} className={`px-4 py-2 rounded-lg ${activeTier === 'a' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}>TOP</button>
+                                        <div className="px-5 py-2 text-blue-400 border-x border-slate-700 uppercase italic">CENTER</div>
+                                        <button onClick={(e) => {e.stopPropagation(); setActiveTier('b');}} className={`px-4 py-2 rounded-lg ${activeTier === 'b' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}>BOTTOM</button>
+                                    </div>
+                                    <button onClick={() => setActiveCell(null)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors text-lg">?</button>
+                                </div>
+                                <div className="grid grid-cols-5 gap-3">
+                                    {symbols.map(s => (
+                                        <button key={s.key} onClick={() => addSymbol(s.key)} className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-90 border shadow-md flex items-center justify-center ${s.key === 'I' ? 'bg-blue-600 border-blue-400 text-white' : s.key === 'L' ? 'bg-red-700 border-red-500 text-white' : 'bg-slate-800 border-slate-700 text-white'}`}>{s.key}</button>
+                                    ))}
+                                    <button onClick={() => { setRows(rows.map(x => x.id === activeCell.rowId ? {...x, [activeCell.field]: {a:'', c:'', b:''}} : x)); }} className="h-12 bg-red-900/40 text-red-300 border border-red-800 rounded-2xl font-black text-[9px] uppercase leading-tight hover:bg-red-900/60 transition-all text-center">Clear<br/>Cell</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
