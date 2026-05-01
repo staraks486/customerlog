@@ -448,6 +448,18 @@
                             </div>
                         </div>
 
+                        {/* FIXED DEVELOPER BRANDING INSIDE CARD */}
+                        <div className="bg-slate-50 py-2 border-t border-black print-hide flex flex-col items-center gap-1">
+                             <div className="text-[10px] font-black uppercase text-slate-800 tracking-[0.1em]">
+                                App developed by Arvind Kumar Shukla 9616417485
+                             </div>
+                             <div className="text-[8px] font-bold text-slate-400 uppercase flex gap-4">
+                                <span>Rows: {rows.length}</span>
+                                <span>•</span>
+                                <span>A4 Landscape Optimized</span>
+                             </div>
+                        </div>
+
                         {/* Movable Controller */}
                         {activeCell && (
                             <div style={{ left: `${popupPos.x}px`, top: `${popupPos.y}px`, position: 'fixed' }} className={`bg-slate-900 text-white p-5 rounded-[40px] shadow-[0_30px_60px_rgba(0,0,0,0.6)] flex flex-col gap-6 z-[100] print-hide border-2 border-slate-700 w-[95%] max-w-sm ${isDragging ? 'opacity-90 scale-105 shadow-blue-500/20' : 'transition-transform'}`}>
@@ -469,17 +481,6 @@
                             </div>
                         )}
                     </div>
-                    {/* Developer Branding Footer */}
-                    <div className="max-w-[1180px] mx-auto mt-8 print-hide flex flex-col items-center gap-2 opacity-50">
-                        <div className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">
-                            App developed by Arvind Kumar Shukla 9616417485
-                        </div>
-                        <div className="text-[9px] font-bold text-slate-400 uppercase flex gap-4">
-                            <span>Rows: {rows.length}</span>
-                            <span>•</span>
-                            <span>A4 Landscape Optimized</span>
-                        </div>
-                    </div>
                 </div>
             );
         };
@@ -489,3 +490,4 @@
     </script>
 </body>
 </html>
+
