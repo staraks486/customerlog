@@ -13,10 +13,17 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Roboto+Mono:wght@700&display=swap');
         
         body {
             font-family: 'Inter', sans-serif;
+        }
+
+        /* Monospace font for the tally marks to ensure vertical alignment */
+        .tally-font {
+            font-family: 'Roboto Mono', monospace;
+            letter-spacing: 0.3em;
+            text-indent: 0.3em; /* Offsets the trailing letter spacing to keep it centered */
         }
 
         @media print {
@@ -50,7 +57,7 @@
             // Main State
             const [rows, setRows] = useState([
                 { id: 1, name: 'CHARANJIT SINGH', target: '', am: { a: '', c: '', b: '' }, al: { a: '', c: '', b: '' }, cm: { a: '', c: '', b: '' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
-                { id: 2, name: 'JASSI SINGH', target: '3.7780', am: { a: '', c: 'III', b: '' }, al: { a: '', c: 'I', b: '' }, cm: { a: '', c: 'III', b: 'CCC' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
+                { id: 2, name: 'JASSI SINGH', target: '3.7780', am: { a: '', c: 'III', b: '' }, al: { a: '', c: 'I', b: '' }, cm: { a: '??????', c: 'III', b: 'CCC' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
                 { id: 3, name: 'ARVIND', target: '3.7780', am: { a: '', c: 'I', b: '@' }, al: { a: '', c: 'I', b: '' }, cm: { a: '', c: '', b: '' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
             ]);
 
@@ -60,7 +67,7 @@
             const [storeName, setStoreName] = useState('(DLF Colony)');
             
             const [activeCell, setActiveCell] = useState(null); 
-            const [activeTier, setActiveTier] = useState('a'); 
+            const [activeTier, setActiveTier] = useState('a'); // a: top, c: center, b: bottom
             const [confirmClear, setConfirmClear] = useState(false);
             
             const [declaration, setDeclaration] = useState('I CERTIFY, THE INFORMATION GIVEN BELOW IS TRUE & CORRECT OF MY BEST KNOWLEDGE');
@@ -78,6 +85,7 @@
             const symbols = [
                 { key: 'I', label: 'Walkin/Convert' },
                 { key: 'L', label: 'Leave' },
+                { key: '??', label: 'Verified' },
                 { key: '@', label: 'DOB' },
                 { key: 'E', label: 'Existing' },
                 { key: 'X', label: 'Not Given' },
@@ -85,12 +93,15 @@
                 { key: 'A', label: 'Accessories' },
                 { key: '-', label: 'Attended by one' },
                 { key: 'C', label: 'Candy Served' },
-                { key: '?', label: 'Pointer' }
+                { key: '?', label: 'Pointer' },
+                { key: '?', label: 'Rejected' },
+                { key: '??', label: 'Sweet' },
+                { key: '??', label: 'Follow up' },
+                { key: '?', label: 'Star' }
             ];
 
             // Global Actions
             const clearSheetData = () => {
-                // 1. Clear tally marks and RP/Ret/Book in rows
                 setRows(prevRows => prevRows.map(row => ({
                     ...row,
                     am: { a: '', c: '', b: '' },
@@ -101,13 +112,9 @@
                     ret: '',
                     book: ''
                 })));
-                
-                // 2. Clear footer fields
                 setPhoneCalls({ today: '0', total: '', reason: '' });
                 setSuspended([{from: '', till: ''}, {from: '', till: ''}]);
                 setMobileBans(['', '']);
-                
-                // 3. Reset confirmation state
                 setConfirmClear(false);
             };
 
@@ -129,6 +136,11 @@
                     book:'' 
                 }]);
             };
+
+            const deleteRow = (id) => {
+                if (rows.length <= 1) return;
+                setRows(rows.filter(r => r.id !== id));
+            }
 
             // Dragging Logic
             const onDragStart = (e) => {
@@ -169,7 +181,7 @@
 
             useEffect(() => {
                 if (activeCell && popupPos.x === 0 && popupPos.y === 0) {
-                    setPopupPos({ x: window.innerWidth / 2 - 180, y: window.innerHeight - 340 });
+                    setPopupPos({ x: window.innerWidth / 2 - 180, y: window.innerHeight - 500 });
                 }
             }, [activeCell]);
 
@@ -200,6 +212,15 @@
                 updateRow(activeCell.rowId, activeCell.field, currentVal + symbolKey, targetTier);
             };
 
+            const deleteOneSymbol = () => {
+                if (!activeCell) return;
+                const row = rows.find(r => r.id === activeCell.rowId);
+                const currentVal = row[activeCell.field][activeTier] || '';
+                if (currentVal.length === 0) return;
+                const newVal = Array.from(currentVal).slice(0, -1).join('');
+                updateRow(activeCell.rowId, activeCell.field, newVal, activeTier);
+            };
+
             const grandAttended = rows.reduce((acc, row) => acc + countMarks(row.am) + countMarks(row.al), 0);
             const grandConverted = rows.reduce((acc, row) => acc + countMarks(row.cm) + countMarks(row.cl), 0);
             const grandPct = grandAttended > 0 ? Math.round((grandConverted / grandAttended) * 100) : 0;
@@ -208,26 +229,26 @@
                 <div className="min-h-screen bg-slate-100 p-2 md:p-6 print:bg-white print:p-0">
                     <div className="max-w-[1150px] mx-auto bg-white border-2 border-black relative shadow-2xl print:shadow-none print:border-black no-shadow">
                         
-                        {/* Top Bar (Editable Sign & Declaration) */}
+                        {/* Top Bar */}
                         <div className="flex justify-between items-center px-4 py-1.5 border-b border-black text-[10px] font-bold bg-slate-50 uppercase">
                             <div className="flex gap-4 items-center flex-1">
                                 <div className="flex gap-1 items-center shrink-0">
                                     <span className="text-slate-400">SIGN:</span> 
-                                    <input type="text" className="border-b border-slate-300 w-24 outline-none bg-transparent font-black" value={managerSign} onChange={(e) => setManagerSign(e.target.value)} />
+                                    <input type="text" className="border-b border-slate-300 w-24 outline-none bg-transparent font-black uppercase" value={managerSign} onChange={(e) => setManagerSign(e.target.value)} />
                                 </div>
                                 <input type="text" className="flex-1 opacity-60 bg-transparent outline-none border-b border-transparent focus:border-slate-300 font-bold" value={declaration} onChange={(e) => setDeclaration(e.target.value)} />
                             </div>
                             <div className="flex gap-1 items-center shrink-0 ml-4">
                                 <input type="text" className="opacity-40 text-[8px] bg-transparent outline-none border-none text-right font-black w-16" value={managerRole} onChange={(e) => setManagerRole(e.target.value)} />
-                                <input type="text" className="bg-transparent border-none outline-none text-right w-24 text-blue-600 font-black" value={managerSign} onChange={(e) => setManagerSign(e.target.value)} />
+                                <input type="text" className="bg-transparent border-none outline-none text-right w-24 text-blue-600 font-black uppercase" value={managerSign} onChange={(e) => setManagerSign(e.target.value)} />
                             </div>
                         </div>
 
-                        {/* Branding & Summary Header */}
+                        {/* Header */}
                         <div className="flex border-b border-black h-36 bg-white">
                             <div className="w-40 p-4 border-r border-black flex flex-col justify-center gap-3">
                                 <div className="flex items-center gap-2 font-bold text-[11px]">
-                                    <span className="text-slate-400 shrink-0 uppercase">M.T.:</span>
+                                    <span className="text-slate-400 shrink-0 uppercase tracking-tighter">M.T. :-</span>
                                     <input type="text" value={mt} onChange={e => setMt(e.target.value)} className="border-b border-black w-full outline-none font-black text-center" />
                                 </div>
                                 <div className="flex flex-col gap-1 font-bold">
@@ -242,7 +263,7 @@
                             </div>
 
                             <div className="w-72 bg-slate-900 text-white flex flex-col text-center border-l border-black">
-                                <div className="text-[9px] font-black border-b border-slate-800 p-2 bg-slate-950 tracking-tighter uppercase italic text-slate-500">Walkins / Conv / Conversion %</div>
+                                <div className="text-[9px] font-black border-b border-slate-800 p-2 bg-slate-950 uppercase italic text-slate-500 tracking-wider">Walkins / Conv / Conversion %</div>
                                 <div className="flex-1 flex items-center justify-around font-black text-3xl italic px-4 py-2">
                                     <span className="text-slate-400">{grandAttended}</span>
                                     <span className="text-slate-800">/</span>
@@ -250,24 +271,24 @@
                                     <span className="text-slate-800">/</span>
                                     <span className="text-blue-500">{grandPct}%</span>
                                 </div>
-                                <div className="grid grid-cols-3 border-t border-slate-800 bg-slate-950 font-black divide-x divide-slate-800 uppercase">
+                                <div className="grid grid-cols-3 border-t border-slate-800 bg-slate-950 font-black divide-x divide-slate-800 uppercase text-center">
                                     <div className="flex flex-col p-2">
-                                        <span className="text-[7px] text-slate-500 tracking-tighter">Total RP</span>
+                                        <span className="text-[7px] text-slate-500">Total RP</span>
                                         <span className="text-sm text-white">{sumCol('rp')}</span>
                                     </div>
                                     <div className="flex flex-col p-2">
-                                        <span className="text-[7px] text-slate-500 tracking-tighter">Total Ret.</span>
+                                        <span className="text-[7px] text-slate-500">Total Ret.</span>
                                         <span className="text-sm text-white">{sumCol('ret')}</span>
                                     </div>
                                     <div className="flex flex-col p-2">
-                                        <span className="text-[7px] text-slate-500 tracking-tighter">Total Book</span>
+                                        <span className="text-[7px] text-slate-500">Total Book</span>
                                         <span className="text-sm text-white">{sumCol('book')}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Main Grid */}
+                        {/* Table */}
                         <div className="flex relative bg-white overflow-x-auto">
                             <table className="flex-1 border-collapse table-fixed min-w-[1000px]">
                                 <thead>
@@ -294,28 +315,28 @@
                                         const pct = att > 0 ? Math.round((conv / att) * 100) : 0;
                                         return (
                                             <tr key={row.id} className="h-16 group">
-                                                <td className="border-b border-r border-black p-2 bg-slate-50/20 relative">
+                                                <td className="border-b border-r border-black p-2 bg-slate-50/20 relative text-left">
                                                     <div className="flex items-center gap-1">
-                                                        <button onClick={() => setRows(rows.filter(r => r.id !== row.id))} className="print-hide opacity-0 group-hover:opacity-100 text-red-500 p-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></button>
+                                                        <button onClick={() => deleteRow(row.id)} className="print-hide opacity-0 group-hover:opacity-100 text-red-500 p-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg></button>
                                                         <input type="text" value={row.name} onChange={e => updateRow(row.id, 'name', e.target.value.toUpperCase())} className="flex-1 font-black uppercase bg-transparent outline-none text-[11px] tracking-tight" />
                                                     </div>
                                                     <div className="flex items-center gap-1 mt-1 text-[9px] font-bold italic text-slate-400 ml-6"><span>T.T. :-</span><input type="text" value={row.target} onChange={e => updateRow(row.id, 'target', e.target.value)} className="bg-transparent border-b border-slate-200 w-full outline-none" /></div>
                                                 </td>
                                                 {['am', 'al', 'cm', 'cl'].map(f => (
                                                     <td key={f} className={`border-b border-r border-black p-0 relative cursor-pointer hover:bg-slate-50 transition-colors ${activeCell?.rowId === row.id && activeCell?.field === f ? 'bg-blue-50 shadow-inner' : ''}`} onClick={() => setActiveCell({rowId: row.id, field: f})}>
-                                                        <div className="w-full h-full flex flex-col justify-between items-center py-1.5 overflow-hidden">
-                                                            <div className="text-[10px] font-black text-slate-400 h-1/4 leading-none">{row[f].a}</div>
-                                                            <div className={`text-xl font-black h-1/2 flex items-center leading-none ${row[f].c.includes('L') ? 'text-red-500' : 'text-black'}`}>{row[f].c}</div>
-                                                            <div className="text-[10px] font-black text-slate-400 h-1/4 leading-none">{row[f].b}</div>
+                                                        <div className="w-full h-full flex flex-col justify-between items-center py-1 overflow-hidden text-center tally-font">
+                                                            <div className="text-[10px] font-black text-slate-400 h-[20%] flex items-center justify-center leading-none uppercase">{row[f].a}</div>
+                                                            <div className={`text-2xl font-black h-[60%] flex items-center justify-center leading-none tracking-widest ${row[f].c.includes('L') ? 'text-red-500' : 'text-black'}`}>{row[f].c}</div>
+                                                            <div className="text-[10px] font-black text-slate-400 h-[20%] flex items-center justify-center leading-none uppercase">{row[f].b}</div>
                                                         </div>
                                                     </td>
                                                 ))}
                                                 <td className="border-b border-r border-black bg-blue-50/20 p-0 text-center font-black text-xs italic">
                                                     <span className="text-slate-400">{att}</span> / <span className="text-slate-600">{conv}</span> / <span className="text-blue-600">{pct}%</span>
                                                 </td>
-                                                <td className="border-b border-r border-black p-0"><input type="number" value={row.rp} onChange={e => updateRow(row.id, 'rp', e.target.value)} className="w-full h-full p-1 text-center outline-none bg-transparent text-[11px] font-black" placeholder="0" /></td>
-                                                <td className="border-b border-r border-black p-0"><input type="number" value={row.ret} onChange={e => updateRow(row.id, 'ret', e.target.value)} className="w-full h-full p-1 text-center outline-none bg-transparent text-[11px] font-black" placeholder="0" /></td>
-                                                <td className="border-b border-black p-0"><input type="number" value={row.book} onChange={e => updateRow(row.id, 'book', e.target.value)} className="w-full h-full p-1 text-center outline-none bg-transparent text-[11px] font-black" placeholder="0" /></td>
+                                                <td className="border-b border-r border-black p-0 text-center"><input type="number" value={row.rp} onChange={e => updateRow(row.id, 'rp', e.target.value)} className="w-full h-full p-1 text-center outline-none bg-transparent text-[11px] font-black" placeholder="0" /></td>
+                                                <td className="border-b border-r border-black p-0 text-center"><input type="number" value={row.ret} onChange={e => updateRow(row.id, 'ret', e.target.value)} className="w-full h-full p-1 text-center outline-none bg-transparent text-[11px] font-black" placeholder="0" /></td>
+                                                <td className="border-b border-black p-0 text-center"><input type="number" value={row.book} onChange={e => updateRow(row.id, 'book', e.target.value)} className="w-full h-full p-1 text-center outline-none bg-transparent text-[11px] font-black" placeholder="0" /></td>
                                             </tr>
                                         )
                                     })}
@@ -333,7 +354,7 @@
                             <div className="w-1/4 p-3 flex flex-col gap-2 uppercase italic text-slate-500">
                                 <span className="font-black text-[9px] border-b border-slate-100 pb-1 uppercase">Suspended /</span>
                                 {suspended.map((s, i) => (
-                                    <div key={i} className="border-b border-slate-200 flex justify-between h-5 items-center gap-2">
+                                    <div key={i} className="border-b border-slate-200 flex justify-between h-5 items-center gap-2 text-center">
                                         <span className="text-[7px] font-bold">FROM:</span>
                                         <input type="text" className="w-1/3 outline-none bg-transparent text-black font-black text-center" value={s.from} onChange={e => { const n = [...suspended]; n[i].from = e.target.value; setSuspended(n); }} /> 
                                         <span className="text-[7px] font-bold">TILL:</span>
@@ -345,7 +366,7 @@
                             <div className="w-1/4 p-3 flex flex-col gap-2 uppercase italic text-slate-500">
                                 <span className="font-black text-[9px] border-b border-slate-100 pb-1 uppercase">Mobile Ban List :</span>
                                 {mobileBans.map((ban, i) => (
-                                    <input key={i} type="text" className="border-b border-slate-200 h-5 bg-transparent outline-none text-black font-black text-[10px]" placeholder={`Employee ${i+1}...`} value={ban} onChange={e => { const n = [...mobileBans]; n[i] = e.target.value; setMobileBans(n); }} />
+                                    <input key={i} type="text" className="border-b border-slate-200 h-5 bg-transparent outline-none text-black font-black text-[10px] text-center" placeholder={`Employee Name...`} value={ban} onChange={e => { const n = [...mobileBans]; n[i] = e.target.value; setMobileBans(n); }} />
                                 ))}
                             </div>
 
@@ -360,7 +381,6 @@
                                 <textarea placeholder="Type call remarks here..." className="w-full outline-none bg-transparent italic text-[11px] h-12 resize-none leading-tight font-medium pt-1" value={phoneCalls.reason} onChange={(e) => setPhoneCalls({...phoneCalls, reason: e.target.value})} />
                             </div>
                             
-                            {/* Reset & Save Actions */}
                             <div className="w-1/4 p-4 flex flex-col justify-between items-end bg-slate-50/50">
                                 <div className="flex gap-2 print-hide">
                                     {confirmClear ? (
@@ -394,12 +414,12 @@
 
                         {/* Movable Controller */}
                         {activeCell && (
-                            <div style={{ left: `${popupPos.x}px`, top: `${popupPos.y}px`, position: 'fixed' }} className={`bg-slate-900 text-white p-5 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-5 z-[100] print-hide border border-slate-700 w-[90%] max-w-sm ${isDragging ? 'opacity-90' : ''}`}>
+                            <div style={{ left: `${popupPos.x}px`, top: `${popupPos.y}px`, position: 'fixed' }} className={`bg-slate-900 text-white p-5 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-5 z-[100] print-hide border border-slate-700 w-[95%] max-w-sm ${isDragging ? 'opacity-90' : ''}`}>
                                 <div onMouseDown={onDragStart} onTouchStart={onDragStart} className="flex items-center justify-between border-b border-slate-800 pb-3 cursor-grab select-none">
                                     <div className="flex bg-slate-800 rounded-xl p-1 text-[9px] font-black">
-                                        <button onClick={(e) => {e.stopPropagation(); setActiveTier('a');}} className={`px-4 py-2 rounded-lg ${activeTier === 'a' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}>TOP</button>
-                                        <div className="px-5 py-2 text-blue-400 border-x border-slate-700 uppercase italic">CENTER</div>
-                                        <button onClick={(e) => {e.stopPropagation(); setActiveTier('b');}} className={`px-4 py-2 rounded-lg ${activeTier === 'b' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}>BOTTOM</button>
+                                        <button onClick={(e) => {e.stopPropagation(); setActiveTier('a');}} className={`px-4 py-2 rounded-lg transition-all ${activeTier === 'a' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}>TOP</button>
+                                        <button onClick={(e) => {e.stopPropagation(); setActiveTier('c');}} className={`px-4 py-2 rounded-lg transition-all border-x border-slate-700 ${activeTier === 'c' ? 'bg-blue-600 text-white shadow-lg' : 'text-blue-400'}`}>CENTER</button>
+                                        <button onClick={(e) => {e.stopPropagation(); setActiveTier('b');}} className={`px-4 py-2 rounded-lg transition-all ${activeTier === 'b' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}>BOTTOM</button>
                                     </div>
                                     <button onClick={() => setActiveCell(null)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors text-lg">?</button>
                                 </div>
@@ -407,8 +427,10 @@
                                     {symbols.map(s => (
                                         <button key={s.key} onClick={() => addSymbol(s.key)} className={`h-12 rounded-2xl font-black text-xl transition-all active:scale-90 border shadow-md flex items-center justify-center ${s.key === 'I' ? 'bg-blue-600 border-blue-400 text-white' : s.key === 'L' ? 'bg-red-700 border-red-500 text-white' : 'bg-slate-800 border-slate-700 text-white'}`}>{s.key}</button>
                                     ))}
+                                    <button onClick={deleteOneSymbol} className="h-12 bg-amber-600/40 text-amber-200 border border-amber-800 rounded-2xl font-black text-[9px] uppercase leading-tight hover:bg-amber-600/60 transition-all text-center">Delete<br/>One</button>
                                     <button onClick={() => { setRows(rows.map(x => x.id === activeCell.rowId ? {...x, [activeCell.field]: {a:'', c:'', b:''}} : x)); }} className="h-12 bg-red-900/40 text-red-300 border border-red-800 rounded-2xl font-black text-[9px] uppercase leading-tight hover:bg-red-900/60 transition-all text-center">Clear<br/>Cell</button>
                                 </div>
+                                <div className="text-[8px] text-slate-500 italic text-center uppercase tracking-tighter">Tip: Select TOP/BOTTOM/CENTER first, then tap symbols or Delete One.</div>
                             </div>
                         )}
                     </div>
