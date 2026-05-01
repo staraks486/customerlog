@@ -57,7 +57,7 @@
             // Main State
             const [rows, setRows] = useState([
                 { id: 1, name: 'CHARANJIT SINGH', target: '', am: { a: '', c: '', b: '' }, al: { a: '', c: '', b: '' }, cm: { a: '', c: '', b: '' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
-                { id: 2, name: 'JASSI SINGH', target: '3.7780', am: { a: '', c: 'III', b: '' }, al: { a: '', c: 'I', b: '' }, cm: { a: '??????', c: 'III', b: 'CCC' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
+                { id: 2, name: 'JASSI SINGH', target: '3.7780', am: { a: '', c: 'III', b: '' }, al: { a: '', c: 'I', b: '' }, cm: { a: '✔️✔️✔️', c: 'III', b: 'CCC' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
                 { id: 3, name: 'ARVIND', target: '3.7780', am: { a: '', c: 'I', b: '@' }, al: { a: '', c: 'I', b: '' }, cm: { a: '', c: '', b: '' }, cl: { a: '', c: '', b: '' }, rp: '', ret: '', book: '' },
             ]);
 
@@ -85,7 +85,7 @@
             const symbols = [
                 { key: 'I', label: 'Walkin/Convert' },
                 { key: 'L', label: 'Leave' },
-                { key: '??', label: 'Verified' },
+                { key: '✔️', label: 'Verified' },
                 { key: '@', label: 'DOB' },
                 { key: 'E', label: 'Existing' },
                 { key: 'X', label: 'Not Given' },
@@ -93,11 +93,11 @@
                 { key: 'A', label: 'Accessories' },
                 { key: '-', label: 'Attended by one' },
                 { key: 'C', label: 'Candy Served' },
-                { key: '?', label: 'Pointer' },
-                { key: '?', label: 'Rejected' },
-                { key: '??', label: 'Sweet' },
-                { key: '??', label: 'Follow up' },
-                { key: '?', label: 'Star' }
+                { key: '↓', label: 'Pointer' },
+                { key: '❌', label: 'Rejected' },
+                { key: '🍬', label: 'Sweet' },
+                { key: '📞', label: 'Follow up' },
+                { key: '⭐', label: 'Star' }
             ];
 
             // Global Actions
@@ -346,7 +346,7 @@
 
                         {/* Action Row */}
                         <div className="print-hide border-b border-black bg-slate-50 p-2 flex justify-center">
-                            <button onClick={addRow} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-full font-black text-[10px] uppercase shadow-lg hover:bg-blue-700 transition-all">? Add New Employee Row</button>
+                            <button onClick={addRow} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-full font-black text-[10px] uppercase shadow-lg hover:bg-blue-700 transition-all">➕ Add New Employee Row</button>
                         </div>
 
                         {/* Admin Footer Grid */}
@@ -421,7 +421,7 @@
                                         <button onClick={(e) => {e.stopPropagation(); setActiveTier('c');}} className={`px-4 py-2 rounded-lg transition-all border-x border-slate-700 ${activeTier === 'c' ? 'bg-blue-600 text-white shadow-lg' : 'text-blue-400'}`}>CENTER</button>
                                         <button onClick={(e) => {e.stopPropagation(); setActiveTier('b');}} className={`px-4 py-2 rounded-lg transition-all ${activeTier === 'b' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}>BOTTOM</button>
                                     </div>
-                                    <button onClick={() => setActiveCell(null)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors text-lg">?</button>
+                                    <button onClick={() => setActiveCell(null)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors text-lg">✕</button>
                                 </div>
                                 <div className="grid grid-cols-5 gap-3">
                                     {symbols.map(s => (
@@ -443,4 +443,3 @@
     </script>
 </body>
 </html>
-
