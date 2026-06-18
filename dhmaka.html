@@ -1,1 +1,510 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhamaka Pro Ultra | Achievement Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Data Repositories ---
+        const DATA = {
+            quotes: [
+                "Success is not just about what you accomplish, it's about what you inspire others to do.",
+                "Hard work beats talent when talent doesn't work hard.",
+                "Great things never come from comfort zones.",
+                "Your attitude determines your direction. Keep soaring high!",
+                "Every achievement is a victory for the whole team. Keep pushing!",
+                "Excellence is not a skill, it is an attitude."
+            ],
+            hooks: [
+                "Today’s performance includes a remarkable bill achievement.",
+                "Witness a masterclass in sales excellence right here.",
+                "Setting new benchmarks with every single transaction.",
+                "Consistency and hard work lead to these massive results.",
+                "Breaking records is a habit for our top performers.",
+                "The power of persistence reflected in today's numbers."
+            ],
+            presentations: [
+                "RC-2 proudly presents today’s achievement:",
+                "Spotlight on today’s extraordinary sales achievement:",
+                "Presenting a powerhouse performance that inspires us all:",
+                "Joining together to celebrate a massive win:",
+                "Applauding a phenomenal milestone by our star achiever:"
+            ]
+        };
+
+        // --- State ---
+        window.achieverNames = ["AMAN KUMAR", "SUMIT SHARMA", "RAHUL VERMA", "VIKAS GUPTA"];
+        let db, auth, appId, currentUser = null;
+
+        // --- Core UI Logic ---
+        const updatePreview = () => {
+            const getVal = (id) => document.getElementById(id).value;
+            const amt = getVal('billAmount') ? Number(getVal('billAmount')).toLocaleString('en-IN') : "0";
+            const type = getVal('achievementType') === 'CUSTOM' ? getVal('customType') : getVal('achievementType');
+            
+            const e1 = (getVal('emoji1') || "").repeat(10);
+            const e2 = (getVal('emoji2') || "").repeat(10);
+            const e3 = (getVal('emoji3') || "").repeat(10);
+            const e4 = (getVal('emoji4') || "").repeat(10);
+
+            const message = `*💥DHAMAKA NO: ${getVal('dhamakaNo')} (${getVal('prefixText')}${getVal('suffixNo')}) OF THE DAY💥*
+
+*${getVal('groupTagline')}*
+
+${e1}
+           *${type}*
+
+*_“${getVal('hookStatement')}”_*
+${e1}
+
+${e2}
+*${getVal('presentationLine')}*
+${e2}
+
+${e3}
+
+*Single Bill: ₹ ${amt}/-*
+*Achiever:  ${getVal('achieverSelect')}*
+
+${e3}
+
+⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️
+*${getVal('quote')}*
+⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️
+
+${e4}
+*_${getVal('footerMsg')}_*
+${e4}`;
+
+            document.getElementById('messagePreview').innerText = message;
+        };
+
+        const renderAchieverList = () => {
+            const sel = document.getElementById('achieverSelect');
+            const prev = sel.value;
+            sel.innerHTML = window.achieverNames.map(n => `<option value="${n}">${n}</option>`).join('');
+            if (window.achieverNames.includes(prev)) sel.value = prev;
+
+            document.getElementById('chipsContainer').innerHTML = window.achieverNames.map((n, i) => `
+                <div class="bg-slate-800/50 border border-slate-700 px-3 py-1 rounded-full flex items-center gap-2 text-[10px] font-bold text-slate-300">
+                    ${n} <button data-index="${i}" class="del-btn text-orange-500 hover:text-orange-400">×</button>
+                </div>
+            `).join('');
+        };
+
+        const toast = (msg) => {
+            const el = document.getElementById('toast');
+            document.getElementById('toastText').innerText = msg;
+            el.style.opacity = '1';
+            el.style.transform = 'translate(-50%, -20px)';
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transform = 'translate(-50%, 0)';
+            }, 3000);
+        };
+
+        // --- Cloud / Firebase Logic ---
+        async function setupCloud() {
+            try {
+                const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+                if (!configStr) return;
+
+                const config = JSON.parse(configStr);
+                const app = initializeApp(config);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'dhamaka-ultra-final';
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    const params = new URLSearchParams(window.location.search);
+                    const sid = params.get('shareId');
+                    if (sid && user) loadShared(sid);
+                });
+            } catch (err) {
+                console.error("Cloud Error:", err);
+            }
+        }
+
+        async function loadShared(sid) {
+            if (!db) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shares', sid);
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    const d = snap.data();
+                    const set = (id, v) => { if(document.getElementById(id)) document.getElementById(id).value = v; };
+                    
+                    set('dhamakaNo', d.dhamakaNo);
+                    set('prefixText', d.prefixText);
+                    set('suffixNo', d.suffixNo);
+                    set('groupTagline', d.groupTagline);
+                    set('hookStatement', d.hookStatement);
+                    set('presentationLine', d.presentationLine);
+                    set('billAmount', d.billAmount);
+                    set('footerMsg', d.footerMsg);
+                    set('quote', d.quote);
+                    
+                    if (d.emojis) {
+                        set('emoji1', d.emojis[0]);
+                        set('emoji2', d.emojis[1]);
+                        set('emoji3', d.emojis[2]);
+                        set('emoji4', d.emojis[3]);
+                    }
+
+                    if (d.achiever && !window.achieverNames.includes(d.achiever)) {
+                        window.achieverNames.push(d.achiever);
+                    }
+                    
+                    renderAchieverList();
+                    set('achieverSelect', d.achiever);
+                    set('achievementType', d.achievementType);
+                    set('customType', d.customType);
+                    
+                    document.getElementById('customType').classList.toggle('hidden', d.achievementType !== 'CUSTOM');
+                    updatePreview();
+                    toast("Shared Dhamaka Loaded 📥");
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // --- Init & Events ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // Field Listeners
+            const fields = ['dhamakaNo', 'prefixText', 'suffixNo', 'groupTagline', 'hookStatement', 'presentationLine', 'billAmount', 'footerMsg', 'quote', 'emoji1', 'emoji2', 'emoji3', 'emoji4', 'customType'];
+            fields.forEach(f => document.getElementById(f).addEventListener('input', updatePreview));
+
+            document.getElementById('achievementType').addEventListener('change', (e) => {
+                document.getElementById('customType').classList.toggle('hidden', e.target.value !== 'CUSTOM');
+                updatePreview();
+            });
+
+            document.getElementById('achieverSelect').addEventListener('change', updatePreview);
+
+            // Button Listeners
+            document.getElementById('addNameBtn').addEventListener('click', () => {
+                const input = document.getElementById('newName');
+                const name = input.value.trim().toUpperCase();
+                if (name && !window.achieverNames.includes(name)) {
+                    window.achieverNames.push(name);
+                    renderAchieverList();
+                    document.getElementById('achieverSelect').value = name;
+                    updatePreview();
+                    input.value = '';
+                }
+            });
+
+            document.getElementById('chipsContainer').addEventListener('click', (e) => {
+                if (e.target.classList.contains('del-btn')) {
+                    const idx = parseInt(e.target.getAttribute('data-index'));
+                    if (window.achieverNames.length > 1) {
+                        window.achieverNames.splice(idx, 1);
+                        renderAchieverList();
+                        updatePreview();
+                    }
+                }
+            });
+
+            document.getElementById('shuffleHook').addEventListener('click', () => {
+                document.getElementById('hookStatement').value = DATA.hooks[Math.floor(Math.random() * DATA.hooks.length)];
+                updatePreview();
+            });
+
+            document.getElementById('shufflePres').addEventListener('click', () => {
+                document.getElementById('presentationLine').value = DATA.presentations[Math.floor(Math.random() * DATA.presentations.length)];
+                updatePreview();
+            });
+
+            document.getElementById('shuffleQuote').addEventListener('click', () => {
+                document.getElementById('quote').value = `“${DATA.quotes[Math.floor(Math.random() * DATA.quotes.length)]}”`;
+                updatePreview();
+            });
+
+            document.getElementById('copyBtn').addEventListener('click', () => {
+                const ta = document.createElement('textarea');
+                ta.value = document.getElementById('messagePreview').innerText;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                toast("WhatsApp Message Copied! 📋");
+            });
+
+            document.getElementById('shareLinkBtn').addEventListener('click', async () => {
+                if (!currentUser || !db) return toast("Cloud Link unavailable");
+                
+                const payload = {
+                    dhamakaNo: document.getElementById('dhamakaNo').value,
+                    prefixText: document.getElementById('prefixText').value,
+                    suffixNo: document.getElementById('suffixNo').value,
+                    groupTagline: document.getElementById('groupTagline').value,
+                    hookStatement: document.getElementById('hookStatement').value,
+                    presentationLine: document.getElementById('presentationLine').value,
+                    achiever: document.getElementById('achieverSelect').value,
+                    achievementType: document.getElementById('achievementType').value,
+                    customType: document.getElementById('customType').value,
+                    billAmount: document.getElementById('billAmount').value,
+                    emojis: [
+                        document.getElementById('emoji1').value,
+                        document.getElementById('emoji2').value,
+                        document.getElementById('emoji3').value,
+                        document.getElementById('emoji4').value
+                    ],
+                    footerMsg: document.getElementById('footerMsg').value,
+                    quote: document.getElementById('quote').value,
+                    timestamp: Date.now()
+                };
+
+                try {
+                    toast("Creating cloud share...");
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'shares');
+                    const docRef = await addDoc(colRef, payload);
+                    
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('shareId', docRef.id);
+                    
+                    const ta = document.createElement('textarea');
+                    ta.value = url.toString();
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    toast("Public Link Generated & Copied! 🔗");
+                } catch (e) { toast("Sharing failed."); }
+            });
+
+            // Initial UI State
+            renderAchieverList();
+            updatePreview();
+            setupCloud();
+        });
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .font-heading { font-family: 'Space+Grotesk', sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .preview-pane { font-family: 'Segoe UI', Tahoma, sans-serif; white-space: pre-wrap; word-break: break-word; }
+        input, select, textarea { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); color: #f1f5f9; outline: none; transition: all 0.2s ease; }
+        input:focus, select:focus { border-color: #f97316; box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2); }
+        .bg-gradient-mesh { background-color: #020617; background-image: radial-gradient(at 0% 0%, rgba(249, 115, 22, 0.1) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%); }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-gradient-mesh min-h-screen text-slate-200 selection:bg-orange-500/30">
+
+    <!-- Navbar -->
+    <header class="border-b border-white/5 sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 bg-orange-600 rounded-2xl flex items-center justify-center shadow-xl shadow-orange-600/20 rotate-3">
+                    <span class="text-2xl">⚡</span>
+                </div>
+                <div>
+                    <h1 class="font-heading font-bold text-2xl tracking-tighter leading-none">DHAMAKA <span class="text-orange-500 italic">ULTRA</span></h1>
+                    <p class="text-[9px] font-black tracking-[0.3em] uppercase opacity-40 mt-1">Professional Achievement Portal</p>
+                </div>
+            </div>
+            <button id="shareLinkBtn" class="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all flex items-center gap-2 group">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-12 transition-transform"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                Create Public Link
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 lg:grid lg:grid-cols-12 lg:gap-8 items-start mb-20">
+        
+        <!-- Controls -->
+        <div class="lg:col-span-7 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Header Card -->
+                <div class="glass-card p-6 rounded-[2rem] space-y-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campaign Header</label>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="space-y-1">
+                            <span class="text-[8px] font-bold text-slate-500 uppercase ml-1">No.</span>
+                            <input type="text" id="dhamakaNo" value="04" class="w-full p-3 rounded-xl text-center font-bold">
+                        </div>
+                        <div class="space-y-1">
+                            <span class="text-[8px] font-bold text-slate-500 uppercase ml-1">Code</span>
+                            <input type="text" id="prefixText" value="RC" class="w-full p-3 rounded-xl text-center font-bold">
+                        </div>
+                        <div class="space-y-1">
+                            <span class="text-[8px] font-bold text-slate-500 uppercase ml-1">Sr.</span>
+                            <input type="text" id="suffixNo" value="01" class="w-full p-3 rounded-xl text-center font-bold">
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="text-[8px] font-bold text-slate-500 uppercase ml-1">Group Tagline</span>
+                        <input type="text" id="groupTagline" value="RC-2, NAAM TO SUNA HOGA" class="w-full p-3 rounded-xl font-bold text-sm">
+                    </div>
+                </div>
+
+                <!-- Sales Card -->
+                <div class="glass-card p-6 rounded-[2rem] space-y-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Achievement Info</label>
+                    </div>
+                    <select id="achievementType" class="w-full p-3 rounded-xl font-bold text-sm">
+                        <option value="THE MAXIMIZER">THE MAXIMIZER</option>
+                        <option value="BILL CRUSHER">BILL CRUSHER</option>
+                        <option value="SALES NINJA">SALES NINJA</option>
+                        <option value="CUSTOM">CUSTOM TITLE...</option>
+                    </select>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 font-black">₹</span>
+                        <input type="number" id="billAmount" value="32999" class="w-full pl-8 p-3 rounded-xl font-black text-emerald-400 text-lg">
+                    </div>
+                    <input type="text" id="customType" placeholder="Type custom title..." class="hidden w-full p-3 rounded-xl text-sm italic">
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="glass-card p-6 rounded-[2rem] space-y-6">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dynamic Messaging</label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center px-1">
+                            <span class="text-[9px] font-bold text-slate-500">HOOK STATEMENT</span>
+                            <button id="shuffleHook" class="text-[9px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                                SHUFFLE
+                            </button>
+                        </div>
+                        <textarea id="hookStatement" rows="2" class="w-full p-3 rounded-xl text-xs italic resize-none">Today’s performance includes a remarkable bill achievement.</textarea>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center px-1">
+                            <span class="text-[9px] font-bold text-slate-500">PRESENTATION LINE</span>
+                            <button id="shufflePres" class="text-[9px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                                SHUFFLE
+                            </button>
+                        </div>
+                        <textarea id="presentationLine" rows="2" class="w-full p-3 rounded-xl text-xs resize-none">RC-2 proudly presents today’s achievement:</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Achiever DB -->
+            <div class="glass-card p-6 rounded-[2rem] space-y-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Achiever Selection</label>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="newName" placeholder="Add full name..." class="flex-1 p-3 rounded-xl text-sm">
+                    <button id="addNameBtn" class="bg-indigo-600 px-6 rounded-xl font-bold hover:bg-indigo-700 transition">+</button>
+                </div>
+                <div class="flex flex-wrap gap-2 py-2" id="chipsContainer"></div>
+                <select id="achieverSelect" class="w-full p-3 rounded-xl font-bold text-orange-400"></select>
+            </div>
+
+            <!-- Style Card -->
+            <div class="glass-card p-6 rounded-[2rem] space-y-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Visual Decorations</label>
+                </div>
+                <div class="grid grid-cols-4 gap-3">
+                    <input type="text" id="emoji1" value="🦁" class="p-3 rounded-xl text-center text-xl">
+                    <input type="text" id="emoji2" value="👞" class="p-3 rounded-xl text-center text-xl">
+                    <input type="text" id="emoji3" value="🌟" class="p-3 rounded-xl text-center text-xl">
+                    <input type="text" id="emoji4" value="✨" class="p-3 rounded-xl text-center text-xl">
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[8px] font-bold text-slate-500 uppercase ml-1">Footer Tagline</span>
+                    <input type="text" id="footerMsg" value="KEEPING SPIRITS HIGH" class="w-full p-3 rounded-xl text-[10px] font-black text-center tracking-[0.4em] uppercase">
+                </div>
+            </div>
+
+            <!-- Motivation -->
+            <div class="glass-card p-6 rounded-[2rem] space-y-4">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-pink-500"></div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inspiration Quote</label>
+                    </div>
+                    <button id="shuffleQuote" class="text-[9px] text-pink-400 font-bold hover:underline italic">RANDOMIZE</button>
+                </div>
+                <textarea id="quote" rows="2" class="w-full p-4 rounded-2xl text-xs italic text-slate-400 outline-none resize-none"></textarea>
+            </div>
+        </div>
+
+        <!-- Phone Preview -->
+        <div class="lg:col-span-5 relative mt-8 lg:mt-0 flex justify-center">
+            <div class="sticky top-24 w-full max-w-[360px]">
+                <!-- Phone UI -->
+                <div class="relative bg-[#0b141a] rounded-[3.2rem] p-3 border-[10px] border-slate-900 shadow-2xl overflow-hidden min-h-[720px] flex flex-col">
+                    <!-- Screen Notch -->
+                    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-10 flex items-center justify-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-slate-800"></div>
+                        <div class="w-8 h-1 rounded-full bg-slate-800"></div>
+                    </div>
+                    
+                    <!-- WhatsApp Header -->
+                    <div class="bg-[#075e54] p-4 text-white flex items-center gap-3 pt-10 rounded-t-[2.5rem]">
+                        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-sm">RC</div>
+                        <div class="flex-1">
+                            <p class="text-xs font-bold leading-none">RC-2 Dhamaka Official</p>
+                            <p class="text-[9px] opacity-70 mt-1">online</p>
+                        </div>
+                        <div class="flex gap-3 opacity-60">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        </div>
+                    </div>
+                    
+                    <!-- Message Preview -->
+                    <div class="flex-1 p-5 preview-pane text-[13px] text-[#e9edef] custom-scroll overflow-y-auto bg-opacity-20" id="messagePreview" style="background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-blend-mode: overlay;">
+                    </div>
+
+                    <!-- Bottom Bar -->
+                    <div class="p-4 bg-slate-900/50 flex flex-col gap-3">
+                        <button id="copyBtn" class="w-full bg-[#25d366] hover:bg-[#20bd5b] text-slate-900 py-4 rounded-2xl font-black text-xs tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                            COPY FOR WHATSAPP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Footer Credit -->
+                <div class="mt-8 text-center p-6 bg-white/5 rounded-3xl border border-white/5">
+                    <p class="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 mb-2">Designed & Engineered By</p>
+                    <p class="text-sm font-bold text-white mb-1">Arvind Kumar Shukla</p>
+                    <a href="tel:9616417485" class="text-orange-500 text-xs font-black tracking-widest hover:text-orange-400 transition-colors">9616417485</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Global Toast -->
+    <div id="toast" class="fixed bottom-0 left-1/2 -translate-x-1/2 bg-white text-slate-900 px-10 py-4 rounded-full text-xs font-black shadow-2xl opacity-0 transition-all duration-500 pointer-events-none z-50 flex items-center gap-3">
+        <div class="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
+            <span class="text-orange-600 text-xs">✨</span>
+        </div>
+        <span id="toastText">Action Successful</span>
+    </div>
+
+</body>
+</html>
