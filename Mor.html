@@ -1,0 +1,419 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Morning Checklist</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vue 3 (No build step or Babel required, 100% browser compatible) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
+
+    <style>
+        /* Global CSS and Print Utilities */
+        [v-cloak] { display: none !important; }
+        .writing-vertical-rl { writing-mode: vertical-rl; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        @media print {
+            @page { size: landscape; margin: 3mm; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important; font-family: sans-serif; }
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { padding: 1px !important; font-size: 8px !important; line-height: 1 !important; border: 1px solid #000 !important; }
+            th > div { height: 65px !important; padding: 0 !important; }
+            .boolean-icon { width: 8px !important; height: 8px !important; }
+            .print-hidden { display: none !important; }
+            header { padding-bottom: 5px !important; }
+            h1 { font-size: 14px !important; margin: 0 !important; }
+            h2 { font-size: 12px !important; margin: 0 !important; }
+            p.header-note { font-size: 9px !important; margin: 0 !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans pb-10 print:bg-white print:pb-0">
+
+    <!-- Global Error Catcher -->
+    <script>
+        window.addEventListener('error', function(e) {
+            document.body.innerHTML = '<div style="padding:20px;color:red;font-family:sans-serif;"><h2>App Failed to Load</h2><p>' + e.message + '</p></div>';
+        });
+    </script>
+    
+    <div id="app" v-cloak>
+        <div class="min-h-screen">
+            <!-- Header Section -->
+            <header class="bg-white shadow-sm border-b border-slate-200 pt-6 pb-4 px-4 sticky top-0 z-10 print-hidden print:shadow-none print:border-none print:pt-0 print:pb-2 print:static">
+                <div class="max-w-[1400px] mx-auto text-center space-y-1 relative">
+                    <div class="absolute right-0 top-0 flex gap-2 print-hidden">
+                        <button @click="window.print()" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Print Document">
+                            <!-- Printer Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        </button>
+                        <button @click="isSettingsOpen = true" class="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Settings">
+                            <!-- Settings Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        </button>
+                    </div>
+                    <p class="header-note text-xs md:text-sm font-bold text-red-600 uppercase tracking-wide">
+                        {{ config.headerNote }}
+                    </p>
+                    <h1 class="text-lg md:text-xl font-extrabold text-slate-900 uppercase">
+                        {{ config.branchName }} - {{ config.subHeader }} FOR THE MONTH OF {{ formattedMonthYear }}
+                    </h1>
+                    <h2 class="text-sm font-semibold text-slate-700">
+                        {{ config.cleaningTime }}
+                    </h2>
+                </div>
+            </header>
+
+            <main class="max-w-[1600px] mx-auto mt-6 px-1 sm:px-4 lg:px-6 print:px-0 print:mt-1">
+                
+                <!-- Table View -->
+                <div v-if="!isFormView" class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden print:border-none print:shadow-none print:rounded-none print:overflow-visible">
+                    <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 print-hidden">
+                        <h3 class="font-bold text-lg flex items-center gap-2">
+                            <!-- Calendar Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            Morning Overview
+                        </h3>
+                        <p class="text-sm text-slate-500 hidden sm:block">Click any row to edit</p>
+                    </div>
+                    
+                    <div class="overflow-x-auto print:overflow-visible">
+                        <table class="w-full border-collapse text-xs whitespace-nowrap table-fixed min-w-[900px] print:min-w-full">
+                            <thead>
+                                <tr class="bg-slate-800 text-white print:bg-gray-200 print:text-black">
+                                    <th class="border border-slate-700 p-2 sticky left-0 z-10 bg-slate-900 print:bg-gray-200 print:border-black w-8 text-center">Day</th>
+                                    <th v-for="col in checkColumns" :key="col.id" class="border border-slate-700 p-0.5 font-medium w-8 print:border-black align-bottom">
+                                        <div class="writing-vertical-rl rotate-180 h-[80px] flex items-center justify-center mx-auto text-center leading-tight overflow-hidden">
+                                            {{ getColLabel(col) }}
+                                        </div>
+                                    </th>
+                                    <th class="border border-slate-700 p-2 font-medium w-12 print-hidden">Edit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(row, index) in data" :key="row.date" @click="handleEditDay(index)" :class="[index % 2 === 0 ? 'bg-white' : 'bg-slate-50', 'hover:bg-blue-50 transition-colors cursor-pointer print:hover:bg-transparent']">
+                                    <td class="border border-slate-200 p-1 sticky left-0 z-10 bg-inherit font-bold text-center border-r-slate-300 print:border-black">
+                                        {{ row.date }}
+                                    </td>
+                                    
+                                    <td v-for="col in checkColumns" :key="col.id" class="border border-slate-200 p-1 text-center print:border-black overflow-hidden h-6">
+                                        
+                                        <div v-if="col.type === 'checkbox'" class="flex justify-center items-center h-full">
+                                            <!-- Check SVG -->
+                                            <svg v-if="row[col.id]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-green-600 boolean-icon print:text-black"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                            
+                                            <!-- Cross SVG / text -->
+                                            <span v-else class="text-red-400 print:text-black print:opacity-30 font-bold">x</span>
+                                        </div>
+                                        
+                                        <span v-else class="truncate max-w-[60px] inline-block text-[11px] print:text-[8px] px-0.5">
+                                            {{ row[col.id] || '-' }}
+                                        </span>
+                                    </td>
+                                    
+                                    <td class="border border-slate-200 p-1 text-center print-hidden">
+                                        <button @click.stop="handleEditDay(index)" class="p-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors mx-auto block" title="Edit Data">
+                                            <!-- Edit Icon -->
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Form View -->
+                <div v-if="isFormView" class="bg-white rounded-xl shadow border border-slate-200 max-w-4xl mx-auto overflow-hidden">
+                    <div class="bg-slate-800 text-white p-4 flex items-center justify-between sticky top-0 md:top-[90px] z-20 shadow-md">
+                        <div class="flex items-center gap-4">
+                            <button @click="handleBackToTable" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                <span class="hidden sm:inline">Back</span>
+                            </button>
+                            <div>
+                                <h2 class="text-lg md:text-xl font-bold">Morning Day {{ data[selectedDay].date }}</h2>
+                                <p class="text-slate-300 text-xs md:text-sm">{{ formattedMonthYear }}</p>
+                            </div>
+                        </div>
+                        <button @click="handleBackToTable" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            <span class="hidden sm:inline">Save</span>
+                        </button>
+                    </div>
+
+                    <div class="p-4 sm:p-6 space-y-6 bg-slate-50">
+                        <div v-for="group in formGroups" :key="group.title" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="bg-slate-100 border-b border-slate-200 px-4 py-3 flex items-center gap-2">
+                                <h3 class="font-bold text-slate-800">{{ group.title }}</h3>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                
+                                <div v-for="fieldId in group.fields" :key="fieldId" class="flex flex-col gap-1.5 p-3 rounded-lg border border-slate-100 bg-slate-50 hover:bg-white hover:border-blue-200 transition-colors">
+                                    <label :for="fieldId" class="text-sm font-semibold text-slate-700 flex justify-between items-center cursor-pointer">
+                                        {{ getColLabel(getCol(fieldId)) }}
+                                    </label>
+                                    
+                                    <button v-if="getCol(fieldId).type === 'checkbox'" :id="fieldId" @click="data[selectedDay][fieldId] = !data[selectedDay][fieldId]" :class="[data[selectedDay][fieldId] ? 'bg-green-500' : 'bg-slate-300', 'mt-1 relative inline-flex h-8 w-16 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-inner']" role="switch">
+                                        <span :class="[data[selectedDay][fieldId] ? 'translate-x-8' : 'translate-x-0', 'pointer-events-none relative inline-block h-7 w-7 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out']">
+                                            <span :class="[data[selectedDay][fieldId] ? 'opacity-100' : 'opacity-0', 'absolute inset-0 flex h-full w-full items-center justify-center transition-opacity duration-200 ease-in']">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                            </span>
+                                            <span :class="[data[selectedDay][fieldId] ? 'opacity-0' : 'opacity-100', 'absolute inset-0 flex h-full w-full items-center justify-center transition-opacity duration-200 ease-in']">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                            </span>
+                                        </span>
+                                    </button>
+
+                                    <input v-else-if="getCol(fieldId).type === 'time'" type="time" :id="fieldId" v-model="data[selectedDay][fieldId]" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border" />
+                                    
+                                    <input v-else type="text" :id="fieldId" v-model="data[selectedDay][fieldId]" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border" :placeholder="'Enter ' + getColLabel(getCol(fieldId))" />
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-100 p-4 border-t border-slate-200 flex justify-end gap-3">
+                        <button @click="handleBackToTable" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm">
+                            Save & Close
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Settings Modal -->
+                <div v-if="isSettingsOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print-hidden">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                            <h3 class="font-bold text-lg flex items-center gap-2 text-slate-800">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                Morning Settings
+                            </h3>
+                            <button @click="isSettingsOpen = false" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-1 rounded transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                        <div class="p-4 space-y-4 max-h-[65vh] overflow-y-auto custom-scrollbar">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Month & Year</label>
+                                <input type="month" v-model="config.monthYear" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border bg-slate-50" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Branch Name</label>
+                                <input type="text" v-model="config.branchName" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Checklist Title</label>
+                                <input type="text" v-model="config.subHeader" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Cleaning Time Text</label>
+                                <input type="text" v-model="config.cleaningTime" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Header Note</label>
+                                <textarea v-model="config.headerNote" rows="2" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border"></textarea>
+                            </div>
+                            <div class="pt-4 border-t border-slate-200">
+                                <h4 class="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                    Edit Column Headers
+                                </h4>
+                                <div class="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200 max-h-64 overflow-y-auto">
+                                    <div v-for="col in checkColumns" :key="col.id" class="relative">
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">{{ col.label }}</label>
+                                        <input type="text" :placeholder="col.label" v-model="config.customLabels[col.id]" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-100 p-4 border-t border-slate-200 flex justify-end">
+                            <button @click="isSettingsOpen = false" class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm">
+                                Save & Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Vue App Logic -->
+    <script>
+        const { createApp, ref, computed, watch, onMounted } = Vue;
+
+        // Data Definition (29 columns mapped from your image)
+        const COLUMNS = [
+            { id: 'date', label: 'Date', type: 'number', readOnly: true },
+            { id: 'time', label: 'Time', type: 'time' },
+            { id: 'uniformBatch', label: 'Uniform Batch Smiley', type: 'checkbox' },
+            { id: 'diaryPen', label: 'Diary & Pen', type: 'checkbox' },
+            { id: 'noOfEmp', label: 'No of Emp', type: 'number' },
+            { id: 'mobilesInCTime', label: 'Mobiles In C. Time', type: 'checkbox' },
+            { id: 'walkInCTime', label: 'Walk-in C.Time', type: 'number' },
+            { id: 'routineCleaning', label: 'Routine Cleaning', type: 'checkbox' },
+            { id: 'displayBoardShelf', label: 'Display Board Shelf', type: 'checkbox' },
+            { id: 'vmDisplay', label: 'VM Display', type: 'checkbox' },
+            { id: 'allMirror', label: 'All Mirror', type: 'checkbox' },
+            { id: 'dryMop', label: 'Dry Mop', type: 'checkbox' },
+            { id: 'office', label: 'Office', type: 'checkbox' },
+            { id: 'fireExtCheck', label: 'Fire Ext Check/Training', type: 'checkbox' },
+            { id: 'batteryWater', label: 'Battery Water', type: 'checkbox' },
+            { id: 'fridgePantry', label: 'Fridge/ Pantry', type: 'checkbox' },
+            { id: 'washBasin', label: 'Wash Basin', type: 'checkbox' },
+            { id: 'bathRoom', label: 'Bath room', type: 'checkbox' },
+            { id: 'frontGlass', label: 'Front Glass', type: 'checkbox' },
+            { id: 'outerRailing', label: 'Outer railing varanda', type: 'checkbox' },
+            { id: 'waterBowl', label: 'Water Bowl', type: 'checkbox' },
+            { id: 'wklyFullClean', label: 'Wkly Full Clean', type: 'checkbox' },
+            { id: 'wklyDrawerClean', label: 'Wkly Drawer Clean', type: 'checkbox' },
+            { id: 'monthlyStockRack', label: 'Monthly Stock Rack Clean', type: 'checkbox' },
+            { id: 'frontElevation', label: 'Front Elevation', type: 'checkbox' },
+            { id: 'dwarf', label: 'Dwarf', type: 'checkbox' },
+            { id: 'mmRemarks', label: 'Remarks (M.M)', type: 'text' },
+            { id: 'sign', label: 'Sign', type: 'text' },
+            { id: 'signTime', label: 'Sign Time', type: 'time' },
+        ];
+
+        const FORM_GROUPS = [
+            { title: "Basic Information", fields: ['time', 'noOfEmp', 'walkInCTime'] },
+            { title: "Staff Compliance", fields: ['uniformBatch', 'diaryPen', 'mobilesInCTime'] },
+            { title: "Routine Cleaning", fields: ['routineCleaning', 'displayBoardShelf', 'vmDisplay', 'allMirror', 'dryMop', 'office', 'fridgePantry', 'washBasin', 'bathRoom', 'frontGlass', 'outerRailing', 'waterBowl', 'dwarf'] },
+            { title: "Periodic Checks", fields: ['fireExtCheck', 'batteryWater', 'wklyFullClean', 'wklyDrawerClean', 'monthlyStockRack', 'frontElevation'] },
+            { title: "Sign-off", fields: ['mmRemarks', 'sign', 'signTime'] }
+        ];
+
+        const DEFAULT_CONFIG = {
+            branchName: "CW Bhupindra Road, 22 No. Branch",
+            monthYear: "2026-06",
+            headerNote: '"THIS CHECKLIST CAN BE SIGNED, ONLY IF YOU HAVE CHECKED EACH & EVERYTHING \'YOURSELF\'"',
+            subHeader: "DAILY MORNING CHECKLIST",
+            cleaningTime: "Cleaning Time With 5 Employees - 1.45 Hrs",
+            customLabels: {}
+        };
+
+        const generateInitialData = (monthYearStr) => {
+            let days = 31;
+            if (monthYearStr) {
+                const parts = monthYearStr.split('-');
+                if (parts.length === 2) {
+                    days = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10), 0).getDate();
+                }
+            }
+            const arr = [];
+            for(let i = 0; i < days; i++) {
+                let dayData = { date: i + 1 };
+                COLUMNS.forEach(col => {
+                    if (col.id !== 'date') {
+                        dayData[col.id] = (col.type === 'checkbox') ? false : '';
+                    }
+                });
+                arr.push(dayData);
+            }
+            return arr;
+        };
+
+        // Initialize Vue App
+        createApp({
+            setup() {
+                const config = ref(JSON.parse(JSON.stringify(DEFAULT_CONFIG)));
+                const data = ref([]);
+                const selectedDay = ref(null);
+                const isFormView = ref(false);
+                const isSettingsOpen = ref(false);
+
+                // Load initial config
+                onMounted(() => {
+                    try {
+                        const savedConfig = localStorage.getItem('vueMorningConfig');
+                        if (savedConfig) {
+                            const parsed = JSON.parse(savedConfig);
+                            if (!parsed.customLabels) parsed.customLabels = {};
+                            config.value = parsed;
+                        }
+                    } catch(e) {}
+                    loadMonthData();
+                });
+
+                // Load Data
+                const loadMonthData = () => {
+                    try {
+                        const savedData = localStorage.getItem('vueMorningData_' + config.value.monthYear);
+                        if (savedData) {
+                            const parsed = JSON.parse(savedData);
+                            if (Array.isArray(parsed) && parsed.length > 0) {
+                                data.value = parsed;
+                                return;
+                            }
+                        }
+                    } catch(e) {}
+                    data.value = generateInitialData(config.value.monthYear);
+                };
+
+                // Watchers for Local Storage saves
+                watch(() => config.value, (newVal) => {
+                    try { localStorage.setItem('vueMorningConfig', JSON.stringify(newVal)); } catch(e){}
+                }, { deep: true });
+
+                watch(() => data.value, (newVal) => {
+                    if (newVal.length > 0) {
+                        try { localStorage.setItem('vueMorningData_' + config.value.monthYear, JSON.stringify(newVal)); } catch(e){}
+                    }
+                }, { deep: true });
+
+                // Watcher to change data sheet when month changes
+                watch(() => config.value.monthYear, () => {
+                    loadMonthData();
+                });
+
+                // Computed
+                const checkColumns = computed(() => COLUMNS.filter(c => c.id !== 'date'));
+                const formattedMonthYear = computed(() => {
+                    if (!config.value.monthYear) return "";
+                    const safeDate = config.value.monthYear.replace('-', '/') + '/01';
+                    return new Date(safeDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+                });
+
+                // Methods
+                const getCol = (id) => COLUMNS.find(c => c.id === id);
+                
+                const getColLabel = (colObj) => {
+                    if (config.value.customLabels && config.value.customLabels[colObj.id]) {
+                        return config.value.customLabels[colObj.id];
+                    }
+                    return colObj.label;
+                };
+
+                const handleEditDay = (index) => {
+                    selectedDay.value = index;
+                    isFormView.value = true;
+                    window.scrollTo(0, 0);
+                };
+
+                const handleBackToTable = () => {
+                    isFormView.value = false;
+                    selectedDay.value = null;
+                };
+
+                return {
+                    config, data, selectedDay, isFormView, isSettingsOpen,
+                    columns: COLUMNS, checkColumns, formGroups: FORM_GROUPS,
+                    formattedMonthYear,
+                    getCol, getColLabel, handleEditDay, handleBackToTable
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
+
+
+```
