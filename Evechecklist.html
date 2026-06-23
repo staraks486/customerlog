@@ -1,0 +1,458 @@
+```react
+import React, { useState, useEffect } from 'react';
+import { 
+  Check, X, Edit, Save, Calendar, ChevronLeft, 
+  Settings, Printer, FileText, ClipboardCheck, 
+  ShieldCheck, Sparkles, PenTool 
+} from 'lucide-react';
+
+// --- Configuration & Schemas ---
+const DEFAULT_CONFIG = {
+  branchName: "CW Bhupindra Road Branch",
+  monthYear: "2026-06",
+  headerNote: '"THIS CHECKLIST CAN BE SIGNED, ONLY IF YOU HAVE CHECKED EACH & EVERYTHING \'YOURSELF\'"',
+  subHeader: "Daily Evening Check List",
+  customLabels: {}
+};
+
+const getDaysInMonth = (monthYear) => {
+  if (!monthYear) return 31;
+  const [year, month] = monthYear.split('-');
+  return new Date(year, month, 0).getDate();
+};
+
+const formatMonthYear = (monthYear) => {
+  if (!monthYear) return "";
+  const date = new Date(`${monthYear}-01`);
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+};
+
+// Evening Checklist Columns based on the provided image
+const COLUMNS = [
+  { id: 'date', label: 'Date', type: 'number', readOnly: true },
+  { id: 'routineDeposit', label: 'Routine Deposit', type: 'checkbox' },
+  { id: 'stockWebSheet', label: 'Stock Web Sheet', type: 'checkbox' },
+  { id: 'pendingBills', label: 'Pending Bills (Challan)', type: 'checkbox' },
+  { id: 'expVouchers', label: 'Exp Vouchers', type: 'checkbox' },
+  { id: 'rpSheet', label: 'RP Sheet', type: 'checkbox' },
+  { id: 'settlement', label: 'Settlement', type: 'checkbox' },
+  { id: 'finalReport', label: 'Final Report', type: 'checkbox' },
+  { id: 'closingVideo', label: 'Closing Video', type: 'checkbox' },
+  { id: 'cashInDrawer', label: 'Cash in Drawer', type: 'checkbox' },
+  { id: 'drawerLockCheck', label: 'Drawer Lock Check', type: 'checkbox' },
+  { id: 'stockInOut', label: 'Stock In/Out', type: 'checkbox' },
+  { id: 'dsrReport', label: 'DSR Report Update', type: 'checkbox' },
+  { id: 'exitFeedback', label: 'Exit Feedback', type: 'checkbox' },
+  { id: 'visitorsBook', label: 'Visitor\'s Book Update', type: 'checkbox' },
+  { id: 'walkinSheet', label: 'Walkin Sheet', type: 'checkbox' },
+  { id: 'officeCounterClean', label: 'Office & Counter Clean', type: 'checkbox' },
+  { id: 'dustbinEmpty', label: 'Dustbin empty', type: 'checkbox' },
+  { id: 'allPlugsAcOff', label: 'All Plugs/ Lights AC OFF', type: 'checkbox' },
+  { id: 'stockRpSetting', label: 'Stock & RP Section Setting', type: 'checkbox' },
+  { id: 'pantryBathroomClean', label: 'Pantry & Bath-room Clean', type: 'checkbox' },
+  { id: 'roomFreshenerOff', label: 'Room Freshener off', type: 'checkbox' },
+  { id: 'plantsWater', label: 'Plants Water', type: 'checkbox' },
+  { id: 'bagCheck', label: 'Bag Check', type: 'checkbox' },
+  { id: 'alarm', label: 'Alarm', type: 'checkbox' },
+  { id: 'remark', label: 'Remark', type: 'text' },
+  { id: 'sign', label: 'Sign', type: 'text' },
+];
+
+const FORM_GROUPS = [
+  {
+    title: "Financial & Reporting",
+    icon: <FileText className="w-5 h-5 text-blue-500" />,
+    fields: ['routineDeposit', 'pendingBills', 'expVouchers', 'settlement', 'finalReport', 'cashInDrawer', 'dsrReport']
+  },
+  {
+    title: "Operations & Documentation",
+    icon: <ClipboardCheck className="w-5 h-5 text-indigo-500" />,
+    fields: ['stockWebSheet', 'rpSheet', 'stockInOut', 'exitFeedback', 'visitorsBook', 'walkinSheet']
+  },
+  {
+    title: "Security & Safety",
+    icon: <ShieldCheck className="w-5 h-5 text-red-500" />,
+    fields: ['closingVideo', 'drawerLockCheck', 'allPlugsAcOff', 'bagCheck', 'alarm']
+  },
+  {
+    title: "Cleaning & Maintenance",
+    icon: <Sparkles className="w-5 h-5 text-emerald-500" />,
+    fields: ['officeCounterClean', 'dustbinEmpty', 'stockRpSetting', 'pantryBathroomClean', 'roomFreshenerOff', 'plantsWater']
+  },
+  {
+    title: "Sign-off & Remarks",
+    icon: <PenTool className="w-5 h-5 text-purple-500" />,
+    fields: ['remark', 'sign']
+  }
+];
+
+// Generate initial empty data for the month
+const generateInitialData = (daysCount) => {
+  return Array.from({ length: daysCount }, (_, i) => {
+    const dayData = { date: i + 1 };
+    COLUMNS.forEach(col => {
+      if (col.id !== 'date') {
+        dayData[col.id] = col.type === 'checkbox' ? false : '';
+      }
+    });
+    return dayData;
+  });
+};
+
+export default function App() {
+  const [config, setConfig] = useState(DEFAULT_CONFIG);
+  const [data, setData] = useState([]);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [isFormView, setIsFormView] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Load config on mount
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('eveningChecklistConfig');
+    if (savedConfig) {
+      setConfig(JSON.parse(savedConfig));
+    }
+  }, []);
+
+  // Load data when month changes
+  useEffect(() => {
+    const savedData = localStorage.getItem(`eveningChecklistData_${config.monthYear}`);
+    if (savedData) {
+      setData(JSON.parse(savedData));
+    } else {
+      setData(generateInitialData(getDaysInMonth(config.monthYear)));
+    }
+  }, [config.monthYear]);
+
+  // Save data to local storage whenever it changes
+  useEffect(() => {
+    if (data.length > 0) {
+      localStorage.setItem(`eveningChecklistData_${config.monthYear}`, JSON.stringify(data));
+    }
+  }, [data, config.monthYear]);
+
+  // Save config whenever it changes
+  useEffect(() => {
+    localStorage.setItem('eveningChecklistConfig', JSON.stringify(config));
+  }, [config]);
+
+  const handleConfigChange = (e) => {
+    setConfig({ ...config, [e.target.name]: e.target.value });
+  };
+
+  const handleEditDay = (dayIndex) => {
+    setSelectedDay(dayIndex);
+    setIsFormView(true);
+    window.scrollTo(0, 0);
+  };
+
+  const handleBackToTable = () => {
+    setIsFormView(false);
+    setSelectedDay(null);
+  };
+
+  const handleInputChange = (dayIndex, fieldId, value) => {
+    const newData = [...data];
+    newData[dayIndex] = { ...newData[dayIndex], [fieldId]: value };
+    setData(newData);
+  };
+
+  const renderBooleanIcon = (value) => {
+    if (value) return <Check className="w-4 h-4 text-green-600 mx-auto" strokeWidth={3} />;
+    return <X className="w-4 h-4 text-red-500 mx-auto opacity-50" strokeWidth={2} />;
+  };
+
+  if (data.length === 0) return <div className="flex h-screen items-center justify-center font-sans">Loading Evening Checklist...</div>;
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-10 print:bg-white print:pb-0">
+      
+      {/* Print specific styles to ensure standard A4 Landscape fits all columns.
+        Using a style tag for deeper print overrides.
+      */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          @page { size: landscape; margin: 5mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          table { width: 100% !important; border-collapse: collapse !important; }
+          th, td { padding: 2px !important; font-size: 9px !important; line-height: 1 !important; border: 1px solid #000 !important; }
+          th > div { height: 75px !important; padding: 0 !important; }
+          .boolean-icon { width: 10px !important; height: 10px !important; }
+        }
+      `}} />
+
+      {/* Header Section */}
+      <header className="bg-white shadow-sm border-b border-slate-200 pt-6 pb-4 px-4 sticky top-0 z-10 print:static print:shadow-none print:border-none print:pt-0 print:pb-2">
+        <div className="max-w-7xl mx-auto text-center space-y-2 relative">
+          
+          <div className="absolute right-0 top-0 flex gap-2 print:hidden">
+            <button onClick={() => window.print()} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Print / Save as PDF">
+              <Printer className="w-5 h-5" />
+            </button>
+            <button onClick={() => setIsSettingsOpen(true)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Settings">
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
+
+          <p className="text-xs md:text-sm font-bold text-red-600 uppercase tracking-wide print:text-[10px]">
+            {config.headerNote}
+          </p>
+          <h1 className="text-lg md:text-2xl font-extrabold text-slate-900 uppercase print:text-lg print:m-0">
+            {config.branchName}
+          </h1>
+          <h2 className="text-base md:text-lg font-semibold text-slate-700 print:text-sm print:m-0">
+            {config.subHeader} FOR THE MONTH OF {formatMonthYear(config.monthYear)}
+          </h2>
+        </div>
+      </header>
+
+      <main className="max-w-[1400px] mx-auto mt-6 px-2 sm:px-4 lg:px-6 print:px-0 print:mt-2">
+        {!isFormView ? (
+          /* --- TABLE VIEW --- */
+          <div className="bg-white rounded-xl shadow border border-slate-200 overflow-hidden print:border-none print:shadow-none">
+            
+            <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 print:hidden">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-slate-500" />
+                Monthly Evening Overview
+              </h3>
+              <p className="text-sm text-slate-500 hidden sm:block">Click any row to edit that day's checklist.</p>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-xs whitespace-nowrap table-fixed min-w-[800px]">
+                <thead>
+                  <tr className="bg-slate-800 text-white print:bg-gray-200 print:text-black">
+                    <th className="border border-slate-700 p-2 sticky left-0 z-10 bg-slate-900 print:bg-gray-200 w-10 text-center print:border-black">Day</th>
+                    {COLUMNS.slice(1).map(col => {
+                      const currentLabel = config.customLabels?.[col.id] || col.label;
+                      return (
+                      <th key={col.id} className="border border-slate-700 p-1 font-medium w-10 print:border-black align-bottom">
+                        {/* Vertical headers to save space */}
+                        <div className="writing-vertical-rl rotate-180 h-32 flex items-center justify-center mx-auto text-center leading-tight">
+                          {currentLabel}
+                        </div>
+                      </th>
+                    )})}
+                    <th className="border border-slate-700 p-2 font-medium w-16 print:hidden">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((row, index) => (
+                    <tr 
+                      key={row.date} 
+                      className={`hover:bg-blue-50 transition-colors cursor-pointer print:hover:bg-transparent ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
+                      onClick={() => handleEditDay(index)}
+                    >
+                      <td className="border border-slate-200 p-1 sticky left-0 z-10 bg-inherit font-bold text-center border-r-slate-300 print:border-black">
+                        {row.date}
+                      </td>
+                      {COLUMNS.slice(1).map(col => (
+                        <td key={col.id} className="border border-slate-200 p-1 text-center print:border-black overflow-hidden">
+                          {col.type === 'checkbox' ? (
+                            <div className="flex justify-center items-center h-full">
+                               {row[col.id] ? 
+                                 <Check className="w-4 h-4 text-green-600 boolean-icon print:text-black" strokeWidth={3} /> : 
+                                 <X className="w-4 h-4 text-red-500 opacity-50 boolean-icon print:text-black print:opacity-100" strokeWidth={2} />
+                               }
+                            </div>
+                          ) : (
+                            <span className="truncate max-w-[80px] inline-block text-[10px] print:text-[8px] px-1">
+                              {row[col.id] || <span className="text-slate-300 print:hidden">-</span>}
+                            </span>
+                          )}
+                        </td>
+                      ))}
+                      <td className="border border-slate-200 p-1 text-center print:hidden">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleEditDay(index); }}
+                          className="p-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors mx-auto block"
+                          title="Edit Evening Data"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          /* --- FORM VIEW --- */
+          <div className="bg-white rounded-xl shadow border border-slate-200 max-w-4xl mx-auto overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+            {/* Form Header */}
+            <div className="bg-slate-800 text-white p-4 flex items-center justify-between sticky top-0 md:top-[100px] z-20 shadow-md">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={handleBackToTable}
+                  className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  <span className="hidden sm:inline">Back</span>
+                </button>
+                <div>
+                  <h2 className="text-xl font-bold">Evening Day {data[selectedDay].date}</h2>
+                  <p className="text-slate-300 text-sm">Fill out the checklist for {data[selectedDay].date} {formatMonthYear(config.monthYear)}</p>
+                </div>
+              </div>
+              <button 
+                onClick={handleBackToTable}
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
+              >
+                <Save className="w-5 h-5" />
+                <span className="hidden sm:inline">Save</span>
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <div className="p-4 sm:p-6 space-y-8 bg-slate-50">
+              {FORM_GROUPS.map((group, groupIdx) => (
+                <div key={groupIdx} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="bg-slate-100 border-b border-slate-200 px-4 py-3 flex items-center gap-2">
+                    {group.icon}
+                    <h3 className="font-bold text-slate-800">{group.title}</h3>
+                  </div>
+                  
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {group.fields.map(fieldId => {
+                      const col = COLUMNS.find(c => c.id === fieldId);
+                      const value = data[selectedDay][fieldId];
+                      const currentLabel = config.customLabels?.[fieldId] || col.label;
+
+                      return (
+                        <div key={fieldId} className="flex flex-col gap-1.5 p-3 rounded-lg border border-slate-100 bg-slate-50 hover:bg-white hover:border-blue-200 transition-colors">
+                          <label htmlFor={fieldId} className="text-sm font-semibold text-slate-700 flex justify-between items-center cursor-pointer">
+                            {currentLabel}
+                          </label>
+                          
+                          {col.type === 'checkbox' ? (
+                            <button
+                              id={fieldId}
+                              onClick={() => handleInputChange(selectedDay, fieldId, !value)}
+                              className={`mt-1 relative inline-flex h-8 w-16 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-inner ${value ? 'bg-green-500' : 'bg-slate-300'}`}
+                              role="switch"
+                              aria-checked={value}
+                            >
+                              <span className={`pointer-events-none relative inline-block h-7 w-7 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${value ? 'translate-x-8' : 'translate-x-0'}`}>
+                                <span className={`absolute inset-0 flex h-full w-full items-center justify-center transition-opacity duration-200 ease-in ${value ? 'opacity-100' : 'opacity-0'}`}>
+                                  <Check className="h-4 w-4 text-green-500" />
+                                </span>
+                                <span className={`absolute inset-0 flex h-full w-full items-center justify-center transition-opacity duration-200 ease-in ${value ? 'opacity-0' : 'opacity-100'}`}>
+                                  <X className="h-4 w-4 text-slate-400" />
+                                </span>
+                              </span>
+                            </button>
+                          ) : (
+                            <input
+                              type="text"
+                              id={fieldId}
+                              value={value}
+                              onChange={(e) => handleInputChange(selectedDay, fieldId, e.target.value)}
+                              className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border"
+                              placeholder={`Enter ${currentLabel.toLowerCase()}`}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Form Footer */}
+            <div className="bg-slate-100 p-4 border-t border-slate-200 flex justify-end gap-3">
+              <button 
+                onClick={handleBackToTable}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+              >
+                Save & Return to Table
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Modal */}
+        {isSettingsOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:hidden">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-slate-800">
+                  <Settings className="w-5 h-5 text-slate-500" />
+                  Evening Checklist Settings
+                </h3>
+                <button onClick={() => setIsSettingsOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-1 rounded transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4 max-h-[65vh] overflow-y-auto custom-scrollbar">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Month & Year</label>
+                  <input type="month" name="monthYear" value={config.monthYear} onChange={handleConfigChange} className="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border bg-slate-50" />
+                  <p className="text-xs text-slate-500 mt-1">Saves separate records for each selected month.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Branch Name</label>
+                  <input type="text" name="branchName" value={config.branchName} onChange={handleConfigChange} className="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Sub Header</label>
+                  <input type="text" name="subHeader" value={config.subHeader} onChange={handleConfigChange} className="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Header Note</label>
+                  <textarea name="headerNote" value={config.headerNote} onChange={handleConfigChange} rows="2" className="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 border" />
+                </div>
+
+                <div className="pt-4 border-t border-slate-200">
+                  <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                    <Edit className="w-4 h-4 text-blue-500" />
+                    Customize Column Headers
+                  </h4>
+                  <p className="text-xs text-slate-500 mb-3">Edit any header name. Leave blank to use default.</p>
+                  <div className="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200 max-h-64 overflow-y-auto">
+                    {COLUMNS.filter(c => c.id !== 'date').map(col => (
+                      <div key={col.id} className="relative">
+                        <label className="block text-xs font-medium text-slate-500 mb-1">{col.label}</label>
+                        <input
+                          type="text"
+                          placeholder={col.label}
+                          value={config.customLabels?.[col.id] !== undefined ? config.customLabels[col.id] : col.label}
+                          onChange={(e) => {
+                             setConfig(prev => ({
+                                ...prev,
+                                customLabels: { ...(prev.customLabels || {}), [col.id]: e.target.value }
+                             }))
+                          }}
+                          className="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="bg-slate-100 p-4 border-t border-slate-200 flex justify-end">
+                <button onClick={() => setIsSettingsOpen(false)} className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm">
+                  Save & Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+      
+      {/* Global CSS for utilities like text orientation on standard tailwind */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .writing-vertical-rl { writing-mode: vertical-rl; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      `}} />
+    </div>
+  );
+}
+
+
+```
